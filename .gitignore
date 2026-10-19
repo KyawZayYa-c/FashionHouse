@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+
+# Frontend build output
+frontend/dist
+frontend/node_modules
+
+# Backend build/output
+backend/dist
+backend/node_modules
+
+# Uploaded user files
+backend/uploads/**/*.jpg
+backend/uploads/**/*.png
+backend/uploads/**/*.jpeg
+backend/uploads/**/*.gif
+
+# OS
+.DS_Store
+.LOVELY
+
+# Production builds
+/.vercel
+/.next

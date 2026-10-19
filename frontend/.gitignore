@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Dependency lockfile
+package-lock.json
+
+# Runtime cache
+/.vite
+/.vitepress
+
+# Production build
+/dist
+/.env.local
+/.env.*.local
+
+# Vercel
+/.vercel
+
+# Editor directories and files
+/.idea
+/.vscode
+*.tsvc
+
+# Logs
+/*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Directory env
+.env.local

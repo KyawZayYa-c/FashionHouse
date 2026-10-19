@@ -1,0 +1,106 @@
+/* Global CSS Foundations for Fashion House */
+
+/* Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* Root Variables */
+:root {
+  --color-primary: #6366f1;
+  --color-primary-hover: #4f46e5;
+  --color-background: #f8fafc;
+  --color-surface: #ffffff;
+  --color-text: #1e293b;
+  --color-text-secondary: #64748b;
+  --color-border: #e2e8f0;
+  --color-danger: #ef4444;
+  --color-success: #22c55e;
+}
+
+/* Base Reset */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 62.5%; /* 1rem = 10px */
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--color-background);
+  color: var(--color-text);
+  line-height: 1.6;
+}
+
+/* Utilities */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.section-header {
+  text-align: center;
+  margin-bottom: 4rem;
+}
+
+.section-header h2 {
+  font-size: 2.8rem;
+  margin-bottom: 0.5rem;
+  color: var(--color-text);
+}
+
+.section-header p {
+  color: var(--color-text-secondary);
+  font-size: 1.2rem;
+}
+
+.btn {
+  display: inline-block;
+  padding: 0.8rem 1.6rem;
+  border-radius: 0.5rem;
+  font-family: 'Inter', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.btn-primary {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: var(--color-primary-hover);
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  background-color: transparent;
+  color: var(--color-text);
+  border: 2px solid var(--color-border);
+}
+
+.btn-secondary:hover {
+  background-color: var(--color-background);
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Focus states */
+*:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
