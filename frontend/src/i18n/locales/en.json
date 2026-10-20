@@ -82,6 +82,28 @@
       "messageRequired": "Message is required"
     }
   },
+  "about": {
+  "heroTitle": "About Us",
+  "collectionTitle": "Shoes Collection",
+  "collectionText": {
+    "0": "Fashion House offers high-quality clothing and footwear carefully selected for you.",
+    "1": "New, trend-aligned products arrive regularly."
+  },
+  "teamTitle": "Our Team",
+  "teamSubtitle": "Ready to help you",
+  "team": {
+    "0": { "name": "Jerry Hill", "role": "Designer" },
+    "1": { "name": "Roger Jones", "role": "Manager" },
+    "2": { "name": "Bianca Oliver", "role": "Consultant" },
+    "3": { "name": "Mike Miller", "role": "Stylist" }
+  },
+  "testimonialTitle": "Testimonials",
+  "testimonialText": "The products I bought from Fashion House are high quality and the service is excellent.",
+  "testimonialAuthor": "Jane Blayck",
+  "ctaTitle": "Shop The 5 Biggest Shoe Trends",
+  "ctaText": "Discover the newest shoe trends at Fashion House.",
+  "shopNow": "Shop Now"
+},
   "newsletter": {
     "title": "Newsletter Updates",
     "subtitle": "Subscribe to receive new arrivals & special offers",

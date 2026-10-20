@@ -15,5 +15,16 @@ export const siteConfig = {
     twitter: 'https://twitter.com/fashionhouse',
     },
   
-    
+      about: {
+    teamImages: [
+      '/images/team-1.jpg',
+      '/images/team-2.jpg',
+      '/images/team-3.jpg',
+      '/images/team-4.jpg',
+    ],
+    collectionImage: '/images/about-collection.jpg',
+    testimonialImage: '/images/testimonial-image.jpg',
+    testimonialAvatar: '/images/testimonial-avatar.jpg',
+    ctaImage: '/images/about-cta.jpg',
+  },
 };
