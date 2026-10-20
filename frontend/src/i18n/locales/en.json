@@ -1,0 +1,55 @@
+{
+  "nav": {
+    "home": "Home",
+    "shop": "Shop",
+    "about": "About",
+    "contact": "Contact",
+    "login": "Login",
+    "cart": "Cart"
+  },
+    "footer": {
+    "aboutTitle": "About Us",
+    "aboutDesc1": "Mauris vitae ultricies leo integer malesuada.",
+    "aboutDesc2": "Odio tempor orci dapibus ultrices in. Egestas diam in arcu cursus euismod.",
+    "aboutDesc3": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt.",
+    "accountTitle": "Account",
+    "myAccount": "My Account",
+    "myWishlist": "My Wishlist",
+    "myCart": "My Cart",
+    "signIn": "Sign in",
+    "checkOut": "Check out",
+    "shippingTitle": "Shipping",
+    "newProducts": "New Products",
+    "bestSellers": "Best Sellers",
+    "manufacturers": "Manufacturers",
+    "suppliers": "Suppliers",
+    "specials": "Specials",
+    "contactTitle": "Contact Us",
+    "phone": "Phone",
+    "fax": "Fax",
+    "address1": "New York",
+    "address2": "96th Street, NY 10129",
+    "copyright": "Copyright © 2026 - WordPress Theme by CreativeThemes"
+  },
+  "admin": {
+  "panel": "Admin Panel",
+  "project": "PROJECT",
+  "database": "DATABASE",
+  "services": "SERVICES",
+  "dashboard": "Dashboard",
+  "products": "Products",
+  "orders": "Orders",
+  "users": "Users",
+  "settings": "Settings",
+  "backToStore": "Back to Store",
+  "adminUser": "Admin",
+  "manager": "Manager"
+},
+  "home": {
+    "welcome": "Welcome to Fashion House",
+    "subtitle": "Discover our new collection."
+  },
+  "common": {
+    "language": "Language"
+  }
+}

@@ -1,16 +1,14 @@
-import React from 'react'
-import { Outlet } from 'react-router-dom'
-import './styles/global.css'
+import React from 'react';
+import { Outlet } from 'react-router-dom';
 
-// Global CSS import for foundational styles
-import '@fontsource/react-inter' // Will be installed as a dependency
-
-const App = () => {
+function App() {
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900">
-      <Outlet />
+    <div>
+      <h2 className="text-center bg-gray-200 p-4">Main App Layout</h2>
+    
+      <Outlet /> 
     </div>
-  )
+  );
 }
 
-export default App
+export default App;

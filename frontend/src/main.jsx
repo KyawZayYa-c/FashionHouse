@@ -1,21 +1,40 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { Router, createBrowserRouter, createRoutesFromElements } from 'react-router-dom'
-import App from './App.jsx'
+import { RouterProvider, createBrowserRouter } from 'react-router-dom'
+import './i18n'
+import './index.css' 
+
+import { ThemeProvider } from './contexts/ThemeContext'
+
+import UserLayout from './layouts/UserLayout'
+import AdminLayout from './layouts/AdminLayout'
+import Home from './pages/Home'
+import AdminDashboard from './pages/AdminDashboard'
 
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <App />,
+    element: <UserLayout />,
     children: [
-      { path: '/', element: <h1>Home Page</h1> },
-      { path: '/admin/login', element: <h1>Admin Login Page</h1> },
+      { index: true, element: <Home /> },
+      { path: 'shop', element: <h1>Shop Page</h1> },
+      { path: 'about', element: <h1>About Page</h1> },
+    ],
+  },
+  {
+    path: '/admin',
+    element: <AdminLayout />,
+    children: [
+      { index: true, element: <AdminDashboard /> },
+      { path: 'products', element: <h1>Manage Products</h1> },
     ],
   },
 ])
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <Router router={router} />
+    <ThemeProvider>
+      <RouterProvider router={router} />
+    </ThemeProvider>
   </React.StrictMode>
 )

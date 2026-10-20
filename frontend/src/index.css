@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* အခြေခံ style လေးတွေ ထည့်ချင်ရင် ဒီမှာ ထည့်နိုင်ပါတယ် */
+body {
+  margin: 0;
+  font-family: sans-serif;
+}
