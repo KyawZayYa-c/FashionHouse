@@ -184,11 +184,11 @@ const AdminLayout = () => {
 
           {/* Breadcrumb / Title */}
           <div className="flex items-center gap-2">
-            <span className="text-[#e8363c] text-xs font-bold tracking-wider uppercase">
+            {/* <span className="text-[#e8363c] text-xs font-bold tracking-wider uppercase">
               {t('admin.project') || 'PROJECT'}
-            </span>
+            </span> */}
             <span className="text-gray-500 dark:text-gray-400 text-sm">
-              Food-App
+              FashionHouse
             </span>
           </div>
 

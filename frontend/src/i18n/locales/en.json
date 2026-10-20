@@ -49,6 +49,48 @@
     "welcome": "Welcome to Fashion House",
     "subtitle": "Discover our new collection."
   },
+   "contact": {
+    "heroTitle": "Contact Us",
+    "formTitle": "Send us a message",
+    "formSubtitle": "Get in touch",
+    "intro": "Have a question? Fill in the form...",
+    "send": "Send Message",
+    "sending": "Sending...",
+    "success": "Message sent successfully!",
+    "error": "Something went wrong.",
+    "imageAlt": "Contact Fashion House",
+    "form": {
+      "name": "Name",
+      "namePlaceholder": "Your full name",
+      "phone": "Phone",
+      "email": "Email",
+      "message": "Message",
+      "messagePlaceholder": "How can we help you?"
+    },
+    "info": {
+      "phone": "Phone",
+      "email": "Email",
+      "address": "Address",
+      "hours": "Open Hours"
+    },
+    "errors": {
+      "nameRequired": "Name is required",
+      "phoneRequired": "Phone is required",
+      "phoneInvalid": "Invalid phone number",
+      "emailRequired": "Email is required",
+      "emailInvalid": "Invalid email",
+      "messageRequired": "Message is required"
+    }
+  },
+  "newsletter": {
+    "title": "Newsletter Updates",
+    "subtitle": "Subscribe to receive new arrivals & special offers",
+    "placeholder": "Email address",
+    "button": "Subscribe",
+    "success": "Subscribed!",
+    "error": "Subscription failed",
+    "invalid": "Please enter a valid email"
+  },
   "common": {
     "language": "Language"
   }

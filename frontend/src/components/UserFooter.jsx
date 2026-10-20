@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { siteConfig } from '../data/siteConfig';
 
 const UserFooter = () => {
   const { t } = useTranslation();
@@ -58,10 +59,13 @@ const UserFooter = () => {
               {t('footer.contactTitle')}
             </h3>
             <div className="space-y-4 text-sm text-gray-500 dark:text-gray-400">
-              <p>{t('footer.phone')}: (+63) 555 1212</p>
-              <p>{t('footer.fax')}: (+63) 555 0100</p>
-              <p className="pt-2">{t('footer.address1')},<br/>{t('footer.address2')}</p>
-            </div>
+                <p>{t('footer.phone')}: {siteConfig.contact.phone[0]}</p>
+                <p>{t('footer.fax')}: {siteConfig.contact.phone[1]}</p>
+                <p className="pt-2">
+                  {siteConfig.contact.address[0]},<br />
+                  {siteConfig.contact.address[1]}
+                </p>
+              </div>
           </div>
         </div>
 
