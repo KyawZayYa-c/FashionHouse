@@ -47,7 +47,28 @@
 },
   "home": {
     "welcome": "Welcome to Fashion House",
-    "subtitle": "Discover our new collection."
+    "subtitle": "Discover our new collection.",
+    "checkLatest": "Check out latest products",
+    "newArrivals": "New Arrivals",
+    "viewAll": "View All",
+    "sale": "Sale",
+    "addToCart": "Add to cart",
+    "securePayment": "Secure Payment",
+    "securePaymentSub": "100% secure payment",
+    "return30": "30 Days Return",
+    "return30Sub": "If goods have problems",
+    "support247": "24/7 Support",
+    "support247Sub": "Dedicated support",
+    "freeDelivery": "Free Delivery",
+    "freeDeliverySub": "For all order over 80$",
+    "accessories": "Accessories",
+    "sneakers": "Sneakers",
+    "tshirts": "T-Shirts",
+    "snapbackCap": "Snapback Cap",
+    "grayShoes": "Gray Shoes",
+    "blackTshirt": "Black T-shirt",
+    "retroSunglasses": "Retro Sunglasses"
+
   },
    "contact": {
     "heroTitle": "Contact Us",
