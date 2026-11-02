@@ -7,7 +7,7 @@ const UserFooter = () => {
   const { t } = useTranslation();
 
   return (
-    <footer className="bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 pt-16 pb-8 transition-colors duration-300">
+    <footer className="bg-white dark:bg-gray-900 border-t border-gray-300 dark:border-gray-800 pt-16 pb-8 transition-colors duration-300">
       <div className="container mx-auto px-6">
         
         {/* Footer Top Grid */}

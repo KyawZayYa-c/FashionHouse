@@ -9,6 +9,7 @@ import { ThemeProvider } from './contexts/ThemeContext'
 import UserLayout from './layouts/UserLayout'
 import AdminLayout from './layouts/AdminLayout'
 import Home from './pages/Home'
+import Shop from './pages/Shop'
 import Contact from './pages/Contact'
 import About from './pages/About';
 import AdminDashboard from './pages/AdminDashboard'
@@ -19,7 +20,7 @@ const router = createBrowserRouter([
     element: <UserLayout />,
     children: [
       { index: true, element: <Home /> },
-      { path: 'shop', element: <h1>Shop Page</h1> },
+      { path: 'shop', element: <Shop />},
       { path: 'about', element: <About /> },
       { path: 'contact', element: <Contact /> },
     ],

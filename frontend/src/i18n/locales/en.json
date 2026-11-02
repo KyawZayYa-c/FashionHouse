@@ -68,8 +68,16 @@
     "grayShoes": "Gray Shoes",
     "blackTshirt": "Black T-shirt",
     "retroSunglasses": "Retro Sunglasses"
-
   },
+  "Shop": {
+  "home": "Home",
+  "products": "Products",
+  "pageTitle": "Products",
+  "filterByPrice": "Filter by price",
+  "minPrice": "Min. Price",
+  "maxPrice": "Max. Price",
+  "topRated": "Top rated products"
+},
    "contact": {
     "heroTitle": "Contact Us",
     "formTitle": "Send us a message",

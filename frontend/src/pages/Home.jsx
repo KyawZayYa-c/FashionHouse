@@ -90,7 +90,7 @@ const Home = () => {
 
       {/* --- HERO SECTION --- */}
       {/* Updated background for dark mode */}
-      <div className="w-full min-h-[calc(100vh-80px)] bg-[#e6e6e6] dark:bg-gray-900 flex flex-col lg:flex-row overflow-hidden transition-colors duration-300">
+      <div className="w-full min-h-[calc(100vh-80px)] bg-white dark:bg-gray-900 flex flex-col lg:flex-row overflow-hidden transition-colors duration-300">
         <div className="flex-1 flex flex-col justify-center px-8 md:px-16 lg:px-24 py-16 lg:py-0">
           {/* Updated text color */}
           <h1 className="text-5xl md:text-7xl lg:text-[5.5rem] font-serif font-black text-gray-900 dark:text-white leading-[1.1] mb-6 transition-colors duration-300">
@@ -159,7 +159,7 @@ const Home = () => {
 
       {/* --- NEW ARRIVALS SECTION --- */}
       {/* Updated backgrounds and text colors */}
-      <div className="w-full bg-white dark:bg-gray-900 py-20 px-8 md:px-16 lg:px-24 transition-colors duration-300">
+      <div className="w-full bg-white dark:bg-gray-950 py-20 px-8 md:px-16 lg:px-24 transition-colors duration-300 ">
         <div className="max-w-7xl mx-auto">
           
           {/* Section Header */}
@@ -192,7 +192,6 @@ const Home = () => {
                   <img 
                     src={product.image} 
                     alt={product.name} 
-                    // Dark mode: Removed mix-blend-multiply because it looks weird on dark backgrounds
                     className="w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal group-hover:scale-105 transition-transform duration-500"
                   />
                 </div>
