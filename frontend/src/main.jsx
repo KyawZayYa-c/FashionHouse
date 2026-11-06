@@ -10,6 +10,7 @@ import UserLayout from './layouts/UserLayout'
 import AdminLayout from './layouts/AdminLayout'
 import Home from './pages/Home'
 import Shop from './pages/Shop'
+import Login from './pages/Login'
 import Contact from './pages/Contact'
 import About from './pages/About';
 import AdminDashboard from './pages/AdminDashboard'
@@ -23,6 +24,8 @@ const router = createBrowserRouter([
       { path: 'shop', element: <Shop />},
       { path: 'about', element: <About /> },
       { path: 'contact', element: <Contact /> },
+      { path: 'login', element: <Login /> },
+
     ],
   },
   {

@@ -78,6 +78,26 @@
   "maxPrice": "Max. Price",
   "topRated": "Top rated products"
 },
+"loginPage": {
+  "welcomeBack": "Welcome Back",
+  "createAccount": "Create Account",
+  "loginSubtitle": "Please enter your details to sign in.",
+  "registerSubtitle": "Join us to get exclusive offers and track your orders.",
+  "email": "Email Address",
+  "emailPlaceholder": "Enter your email",
+  "password": "Password",
+  "passwordPlaceholder": "Enter your password",
+  "fullName": "Full Name",
+  "fullNamePlaceholder": "Enter your full name",
+  "forgotPassword": "Forgot Password?",
+  "loginBtn": "Sign In",
+  "registerBtn": "Sign Up",
+  "noAccount": "Don't have an account?",
+  "hasAccount": "Already have an account?",
+  "signUpLink": "Sign up",
+  "signInLink": "Sign in",
+  "orContinue": "Or continue with"
+},
    "contact": {
     "heroTitle": "Contact Us",
     "formTitle": "Send us a message",
