@@ -46,7 +46,31 @@ const corsOptions = {
 }
 app.use(cors(corsOptions))
 
-// Base API route prefix
+// Mount all API routers
+import authRoutes from './routes/auth.js'
+import categoryRoutes from './routes/category.js'
+import productRoutes from './routes/product.js'
+import cartRoutes from './routes/cart.js'
+import wishlistRoutes from './routes/wishlist.js'
+import orderRoutes from './routes/order.js'
+import paymentRoutes from './routes/payment.js'
+import shipmentRoutes from './routes/shipment.js'
+import reviewRoutes from './routes/review.js'
+import adminRoutes from './routes/admin.js'
+
+app.use('/api/auth', authRoutes)
+app.use('/api/categories', categoryRoutes)
+app.use('/api/products', productRoutes)
+app.use('/api/cart', cartRoutes)
+app.use('/api/wishlist', wishlistRoutes)
+app.use('/api/orders', orderRoutes)
+app.use('/api/payments', paymentRoutes)
+app.use('/api/shipments', shipmentRoutes)
+app.use('/api/reviews', reviewRoutes)
+app.use('/api/admin', adminRoutes)
+
+// Health check endpoint with database status
+import mongoose from 'mongoose'
 import healthRouter from './routes/health.js'
 app.use('/api', healthRouter)
 
@@ -57,7 +81,7 @@ app.use('/api/*', (req, res) => {
 
 // Global error-handling middleware
 app.use((err, req, res, next) => {
-  console.error('❌ Global Error Handler:', err.stack || err.message)
+  console.error('Global Error Handler:', err.stack || err.message)
   const statusCode = err.statusCode || 500
   const message = err.message || 'Internal Server Error'
   res.status(statusCode).json({ success: false, message })
@@ -65,18 +89,23 @@ app.use((err, req, res, next) => {
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
+  const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : mongoose.connection.readyState === 2 ? 'connecting' : mongoose.connection.readyState === 3 ? 'disconnecting' : 'disconnected'
+
   res.json({
     success: true,
     message: 'API is healthy',
     timestamp: new Date().toISOString(),
     version: '1.0.0',
+    database: {
+      status: dbStatus,
+    },
   })
 })
 
 const PORT = process.env.PORT || 5000
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`)
+  console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`)
 })
 
 export default app
