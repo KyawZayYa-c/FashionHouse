@@ -7,7 +7,9 @@
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "build": "echo 'No build step needed for JS project'",
-    "lint": "echo 'No lint config for JS-only project'"
+    "lint": "echo 'No lint config for JS-only project'",
+    "test": "jest",
+    "test:watch": "jest --watch"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
