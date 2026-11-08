@@ -254,7 +254,7 @@ const getBestSellingProducts = catchAsync(async (limit = 10) => {
   ]);
 
   return products;
-}
+});
 
 /**
  * Get sales summaries by date range
