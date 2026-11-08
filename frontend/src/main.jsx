@@ -1,10 +1,12 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { RouterProvider, createBrowserRouter } from 'react-router-dom'
+import { RouterProvider, createBrowserRouter, Route } from 'react-router-dom'
 import './i18n'
-import './index.css' 
+import './index.css'
 
 import { ThemeProvider } from './contexts/ThemeContext'
+import { RootProvider } from './app/provider'
+import { ProtectedRoute, AdminRoute, GuestRoute } from './components/routes/ProtectedRoute'
 
 import UserLayout from './layouts/UserLayout'
 import AdminLayout from './layouts/AdminLayout'
@@ -18,14 +20,23 @@ import AdminDashboard from './pages/AdminDashboard'
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <UserLayout />,
+    element: <RootProvider />,
     children: [
-      { index: true, element: <Home /> },
-      { path: 'shop', element: <Shop />},
-      { path: 'about', element: <About /> },
-      { path: 'contact', element: <Contact /> },
-      { path: 'login', element: <Login /> },
+      // Public routes - guest access (login page visible to all, including authenticated)
+      <Route path="login" element={<Login />} />
 
+      // Protected customer routes - need authentication
+      <Route path="cart" element={
+        <ProtectedRoute allowedRoles={['customer', 'admin']}>
+          <h1>Cart Page</h1>
+        </ProtectedRoute>}
+      />
+
+      // Admin routes - protected
+      <Route path="/admin" element={<AdminLayout />}>
+        <Route index element={<AdminDashboard />} />
+        <Route path="products" element={<h1>Manage Products</h1>} />
+      </Route>,
     ],
   },
   {
@@ -40,8 +51,10 @@ const router = createBrowserRouter([
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <ThemeProvider>
-      <RouterProvider router={router} />
-    </ThemeProvider>
+    <RootProvider>
+      <ThemeProvider>
+        <RouterProvider router={router} />
+      </ThemeProvider>
+    </RootProvider>
   </React.StrictMode>
 )
