@@ -1,10 +1,12 @@
+const mongoose = require('mongoose');
 const Review = require('../models/Review');
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 const AppError = require('../utils/errors').AppError;
 const NotFoundError = require('../utils/errors').NotFoundError;
 const ValidationError = require('../utils/errors').ValidationError;
-const catchAsync = require('../utils/catchAsync');
+const ConflictError = require('../utils/errors').ConflictError;
+const catchAsync = (fn) => fn;
 
 /**
  * Create product review
@@ -55,22 +57,23 @@ const createReview = catchAsync(async (userId, productId, orderId, rating, revie
     reviewText: reviewText || '',
   });
 
-  // 6. Update product's review count and average rating
-  await Product.updateOne(
-    { _id: productId },
-    {
-      $inc: { reviewCount: 1 },
-      $set: {
-        averageRating: {
-          // This is a simplified calculation - in production, use aggregation
-          $add: [
-            '$averageRating',
-            { $multiply: [{ $ifNull: ['$averageRating', 0] }, { $divide: ['$reviewCount', 1] }] },
-          ],
-        },
-      },
-    }
-  );
+  // 6. Update product's review count and average rating. The rating average is
+  //    recomputed from all reviews for the product via an aggregation, then
+  //    written with a plain $set — aggregation operators cannot be used inside
+  //    a normal update document.
+  const productIdObj = new mongoose.Types.ObjectId(String(productId));
+  await Product.updateOne({ _id: productIdObj }, { $inc: { reviewCount: 1 } });
+
+  const ratingStats = await Review.aggregate([
+    { $match: { productId: productIdObj } },
+    { $group: { _id: null, averageRating: { $avg: '$rating' } } },
+  ]);
+  if (ratingStats.length > 0) {
+    await Product.updateOne(
+      { _id: productIdObj },
+      { $set: { averageRating: ratingStats[0].averageRating } }
+    );
+  }
 
   return review;
 });
@@ -85,8 +88,9 @@ const getProductReviews = catchAsync(async (productId, query = {}) => {
   const { page = 1, limit = 10, rating } = query;
   const skip = (page - 1) * limit;
 
-  // Build filter
-  const filter = { productId };
+  // Build filter. Aggregation $match does not auto-cast strings to ObjectId,
+  // so cast the productId explicitly.
+  const filter = { productId: new mongoose.Types.ObjectId(String(productId)) };
   if (rating) {
     filter.rating = Number(rating);
   }
@@ -113,7 +117,8 @@ const getProductReviews = catchAsync(async (productId, query = {}) => {
         reviewText: 1,
         createdAt: 1,
         'user.username': 1,
-        'user.email': 0, // Exclude email for privacy
+        // Inclusion projection: email is simply omitted (mixing exclusions in
+        // an inclusion projection is invalid in MongoDB).
       },
     },
   ]);
@@ -139,10 +144,10 @@ const getCustomerReviews = catchAsync(async (userId, query = {}) => {
   const { page = 1, limit = 10, productId } = query;
   const skip = (page - 1) * limit;
 
-  // Build filter
-  const filter = { userId };
+  // Cast userId for the same aggregation $match reason as above.
+  const filter = { userId: new mongoose.Types.ObjectId(String(userId)) };
   if (productId) {
-    filter.productId = productId;
+    filter.productId = new mongoose.Types.ObjectId(String(productId));
   }
 
   const reviews = await Review.aggregate([

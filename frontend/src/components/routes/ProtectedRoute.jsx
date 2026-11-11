@@ -1,83 +1,76 @@
-import React, { useEffect, useState } from 'react'
-import { Navigate, useLocation, useRouteError } from 'react-router-dom'
-import { useAppDispatch, useAppSelector } from '../hooks/useAppSelector'
-import { selectIsInitializing, selectIsAuthenticated, selectUser } from '../features/auth/authSlice'
-import { logoutThunk } from '../features/auth/authSlice'
-import { useToast } from '../hooks/useToast'
+import React from 'react'
+import { Navigate, useLocation } from 'react-router-dom'
+import { Loader2 } from 'lucide-react'
+import { useAppSelector } from '../../hooks/useAppSelector'
+import {
+  selectIsInitializing,
+  selectIsAuthenticated,
+  selectUser,
+} from '../../features/auth/authSlice.jsx'
 
-// Protected route component
+// Full-screen boot loader shown while the session is being restored, so protected
+// pages never flash a redirect before we know whether the visitor is logged in.
+const AuthLoader = () => (
+  <div className="flex min-h-[60vh] w-full items-center justify-center">
+    <Loader2 className="h-8 w-8 animate-spin text-[#e8363c]" strokeWidth={2} />
+  </div>
+)
+
+// Requires an authenticated user with one of the allowed roles.
 export const ProtectedRoute = ({ children, allowedRoles = ['customer', 'admin'] }) => {
-  const dispatch = useAppDispatch()
   const isInitializing = useAppSelector(selectIsInitializing)
   const isAuthenticated = useAppSelector(selectIsAuthenticated)
   const user = useAppSelector(selectUser)
   const location = useLocation()
 
-  // If still initializing, don't redirect yet
-  if (isInitializing) {
-    return null // Render nothing while initializing
-  }
+  if (isInitializing) return <AuthLoader />
 
-  // If not authenticated, redirect to login
   if (!isAuthenticated) {
     return <Navigate to="/login" replace state={{ from: location }} />
   }
 
-  // Check role permissions
   if (user && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/login" replace state={{ from: location }} />
+    return <Navigate to="/" replace />
   }
 
   return children
 }
 
-// Guest route component - for public pages
+// Public-only pages (login/register). Logged-in users are sent to the shop, or
+// back to the page they were trying to reach before being asked to sign in.
 export const GuestRoute = ({ children }) => {
-  const isAuthenticated = useAppSelector((state: any) => state.auth.isAuthenticated)
+  const isInitializing = useAppSelector(selectIsInitializing)
+  const isAuthenticated = useAppSelector(selectIsAuthenticated)
+  const location = useLocation()
+
+  if (isInitializing) return <AuthLoader />
 
   if (isAuthenticated) {
-    return <Navigate to="/shop" replace />
+    const target = location.state?.from?.pathname || '/shop'
+    return <Navigate to={target} replace />
   }
 
   return children
 }
 
-// Admin route component
+// Admin-only area.
 export const AdminRoute = ({ children }) => {
-  const isAuthenticated = useAppSelector((state: any) => state.auth.isAuthenticated)
-  const userRole = useAppSelector((state: any) => state.auth.user?.role)
+  const isInitializing = useAppSelector(selectIsInitializing)
+  const isAuthenticated = useAppSelector(selectIsAuthenticated)
+  const user = useAppSelector(selectUser)
+  const location = useLocation()
+
+  if (isInitializing) return <AuthLoader />
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />
+    return <Navigate to="/login" replace state={{ from: location }} />
   }
 
-  if (userRole !== 'admin') {
-    return <Navigate to="/shop" replace />
+  if (user?.role !== 'admin') {
+    return <Navigate to="/" replace />
   }
 
   return children
 }
 
-// Authentication status component - shows loading state
-export const AuthStatus = () => {
-  const dispatch = useAppDispatch()
-  const { isInitializing, isAuthenticated, user, error } = useAppSelector((state: any) => state.auth)
-
-  useEffect(() => {
-    // If initialization completes and user is restored, fetch cart/wishlist
-    if (!isInitializing && isAuthenticated && user) {
-      dispatch(fetchCartThunk()).unwrap()
-      dispatch(fetchWishlistThunk()).unwrap()
-    }
-  }, [isInitializing, isAuthenticated, user, dispatch])
-
-  if (isInitializing) {
-    return null // Render nothing during initialization
-  }
-
-  if (error) {
-    return <p className="text-red-500">Authentication error: {error}</p>
-  }
-
-  return null
-}
+export default ProtectedRoute

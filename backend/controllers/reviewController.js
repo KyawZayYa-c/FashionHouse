@@ -1,9 +1,9 @@
-const catchAsync = require('../../utils/catchAsync');
-const responseHandler = require('../../utils/responseHandler');
-const reviewService = require('../services/reviewService');
-const AppError = require('../../utils/errors').AppError;
-const NotFoundError = require('../../utils/errors').NotFoundError;
-const ValidationError = require('../../utils/errors').ValidationError;
+const catchAsync = require('../src/utils/catchAsync');
+const responseHandler = require('../src/utils/responseHandler');
+const reviewService = require('../src/services/reviewService');
+const AppError = require('../src/utils/errors').AppError;
+const NotFoundError = require('../src/utils/errors').NotFoundError;
+const ValidationError = require('../src/utils/errors').ValidationError;
 
 const createReview = catchAsync(async (req, res) => {
   if (!req.user) {
@@ -75,7 +75,8 @@ const updateReview = catchAsync(async (req, res) => {
     return;
   }
 
-  const { reviewId } = req.params;
+  // Route declares ':id'; fall back from ':reviewId' for safety.
+  const reviewId = req.params.reviewId || req.params.id;
   const { rating, reviewText } = req.body;
 
   if (!reviewId) {
@@ -100,7 +101,7 @@ const deleteReview = catchAsync(async (req, res) => {
     return;
   }
 
-  const { reviewId } = req.params;
+  const reviewId = req.params.reviewId || req.params.id;
 
   if (!reviewId) {
     responseHandler.error(res, 400, 'Review ID is required');

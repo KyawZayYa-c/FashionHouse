@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAppSelector } from '../hooks/useAppSelector';
+import { selectUser } from '../features/auth/authSlice.jsx';
 import {
   LayoutDashboard,
   Package,
@@ -13,13 +15,13 @@ import {
   Store,
   Sun,
   Moon,
-  Bell,
 } from 'lucide-react';
 
 const AdminLayout = () => {
   const { t, i18n } = useTranslation();
   const location = useLocation();
   const { isDark, toggleTheme } = useTheme();
+  const user = useAppSelector(selectUser);
 
   const [isHovered, setIsHovered] = useState(false);
 
@@ -52,12 +54,12 @@ const AdminLayout = () => {
       items: [
         {
           path: '/admin/products',
-          label: t('admin.products'),
+          label: t('admin.products.title'),
           icon: Package,
         },
         {
           path: '/admin/orders',
-          label: t('admin.orders'),
+          label: t('admin.orders.title'),
           icon: ShoppingCart,
         },
       ],
@@ -67,12 +69,12 @@ const AdminLayout = () => {
       items: [
         {
           path: '/admin/users',
-          label: t('admin.users'),
+          label: t('admin.users.title'),
           icon: Users,
         },
         {
           path: '/admin/settings',
-          label: t('admin.settings'),
+          label: t('admin.settings.title'),
           icon: Settings,
         },
       ],
@@ -234,39 +236,30 @@ const AdminLayout = () => {
               )}
             </button>
 
-            <button
-              aria-label="Notifications"
-              title="Notifications"
-              className="hover:text-gray-900 dark:hover:text-white transition-colors"
-            >
-              <Bell size={20} strokeWidth={1.7} />
-            </button>
-
-            <button
-              aria-label="Settings"
-              title="Settings"
-              className="hover:text-gray-900 dark:hover:text-white transition-colors"
+            <Link
+              to="/admin/settings"
+              aria-label={t('admin.settings.title')}
+              title={t('admin.settings.title')}
+              className="hover:text-[#e8363c] transition-colors"
             >
               <Settings size={20} strokeWidth={1.7} />
-            </button>
+            </Link>
 
             {/* Profile */}
-            <div className="flex items-center gap-3 pl-4 border-l border-gray-200 dark:border-gray-800">
+            <Link to="/account" className="flex items-center gap-3 pl-4 border-l border-gray-200 dark:border-gray-800 group">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-bold text-gray-800 dark:text-white">
-                  {t('admin.adminUser') || 'Admin'}
+                <p className="text-sm font-bold text-gray-800 dark:text-white group-hover:text-[#e8363c] transition-colors">
+                  {user?.username || t('admin.adminUser')}
                 </p>
                 <p className="text-[10px] text-gray-500 uppercase">
-                  {t('admin.manager') || 'Manager'}
+                  {user?.role === 'admin' ? t('admin.manager') : user?.role}
                 </p>
               </div>
 
-              <img
-                src="https://i.pravatar.cc/150?img=47"
-                alt="Profile"
-                className="w-9 h-9 rounded-full object-cover border border-gray-200 dark:border-gray-700"
-              />
-            </div>
+              <span className="w-9 h-9 rounded-full bg-[#e8363c] text-white flex items-center justify-center font-display font-bold border border-gray-200 dark:border-gray-700">
+                {(user?.username || 'A').charAt(0).toUpperCase()}
+              </span>
+            </Link>
           </div>
         </header>
 

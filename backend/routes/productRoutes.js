@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const authMiddleware = require('../middleware/authMiddleware');
-const adminMiddleware = require('../middleware/adminMiddleware');
+const authMiddleware = require('../src/utils/middleware/authMiddleware');
+const adminMiddleware = require('../src/utils/middleware/adminMiddleware');
 const productController = require('../controllers/productController');
 
 // Public routes
@@ -16,13 +16,13 @@ router.get('/slug/:slug', productController.getProductBySlug);
 // GET /:id - requires authentication
 router.get('/:id', authMiddleware, productController.getProductById);
 
-// POST / - requires authentication
-router.post('/', authMiddleware, productController.createProduct);
+// POST / - admin only
+router.post('/', authMiddleware, adminMiddleware, productController.createProduct);
 
-// PUT /:id - requires authentication
-router.put('/:id', authMiddleware, productController.updateProduct);
+// PUT /:id - admin only
+router.put('/:id', authMiddleware, adminMiddleware, productController.updateProduct);
 
-// DELETE /:id - requires authentication
-router.delete('/:id', authMiddleware, productController.deleteProduct);
+// DELETE /:id - admin only
+router.delete('/:id', authMiddleware, adminMiddleware, productController.deleteProduct);
 
 module.exports = router;

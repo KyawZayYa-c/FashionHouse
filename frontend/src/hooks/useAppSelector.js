@@ -1,5 +1,5 @@
-import { useSelector as useReduxSelector } from 'react-redux'
+import { useDispatch, useSelector as useReduxSelector } from 'react-redux'
 
-// Type-safe selector hook
-export const useAppSelector = <TSelected>(selector: (state: any) => TSelected) =>
-  useReduxSelector<TSelected>(selector)
+export const useAppDispatch = () => useDispatch()
+export const useAppSelector = (selector) =>
+  useReduxSelector(selector)

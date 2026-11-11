@@ -1,18 +1,11 @@
+// Jest runs the CommonJS backend suite (supertest against the exported Express
+// app). The old config referenced 'jest-preset-angular', which was never
+// installed here, and used a misspelled 'setupFilesAfterTimeout' key — both
+// removed.
 module.exports = {
   testEnvironment: 'node',
-  preset: 'jest-preset-angular', // or 'ts-jest' if using TypeScript
-  testMatch: [
-    '<rootDir>/tests/**/*.test.js',
-    '<rootDir>/tests/**/*.test.ts',
-  ],
-  setupFilesAfterTimeout: [
-    '<rootDir>/src/utils/jest.setup.js'
-  ],
-  moduleNameMapper: {
-    // Map path aliases to actual paths
-    '^@/src/(.*)$': '<rootDir>/src/$1',
-    '^@/tests/(.*)$': '<rootDir>/tests/$1',
-  },
+  testMatch: ['<rootDir>/tests/**/*.test.js'],
+  setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
   testTimeout: 30000,
-  verbose: true,
+  clearMocks: true,
 };

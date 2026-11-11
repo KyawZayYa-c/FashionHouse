@@ -1,8 +1,9 @@
-const catchAsync = require('../../utils/catchAsync');
-const responseHandler = require('../../utils/responseHandler');
-const paymentService = require('../services/paymentService');
-const AppError = require('../../utils/errors').AppError;
-const NotFoundError = require('../../utils/errors').NotFoundError;
+const catchAsync = require('../src/utils/catchAsync');
+const responseHandler = require('../src/utils/responseHandler');
+const paymentService = require('../src/services/paymentService');
+const orderService = require('../src/services/orderService');
+const AppError = require('../src/utils/errors').AppError;
+const NotFoundError = require('../src/utils/errors').NotFoundError;
 
 const createPayment = catchAsync(async (req, res) => {
   if (!req.user) {
@@ -58,7 +59,8 @@ const getOrderPayments = catchAsync(async (req, res) => {
 });
 
 const getPaymentById = catchAsync(async (req, res) => {
-  const { paymentId } = req.params;
+  // Route declares ':id'; fall back from ':paymentId' for safety.
+  const paymentId = req.params.paymentId || req.params.id;
 
   if (!paymentId) {
     responseHandler.error(res, 400, 'Payment ID is required');
@@ -91,7 +93,7 @@ const verifyPayment = catchAsync(async (req, res) => {
 });
 
 const updatePaymentStatus = catchAsync(async (req, res) => {
-  const { paymentId } = req.params;
+  const paymentId = req.params.paymentId || req.params.id;
   const { status } = req.body;
   const { authorizedBy } = req.user; // Admin who authorized
 

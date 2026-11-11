@@ -2,8 +2,184 @@
 @tailwind components;
 @tailwind utilities;
 
-/* အခြေခံ style လေးတွေ ထည့်ချင်ရင် ဒီမှာ ထည့်နိုင်ပါတယ် */
+/* ------------------------------------------------------------------ */
+/* Fashion House — global visual language                              */
+/* ------------------------------------------------------------------ */
+:root {
+  --fh-ink: #0d0d0f;
+  --fh-porcelain: #f7f4ef;
+  --fh-brand: #e8363c;
+  --fh-brand-deep: #b0161d;
+  --fh-gold: #f2b75a;
+  --fh-cobalt: #2f5bff;
+  --fh-magenta: #d6249f;
+  --fh-emerald: #16a34a;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
-  font-family: sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background-color: var(--fh-porcelain);
+  color: var(--fh-ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+.dark body {
+  background-color: var(--fh-ink);
+  color: #f4f4f5;
+}
+
+/* Headings lean on the editorial display serif by default. */
+h1, h2, h3, .font-display {
+  font-family: 'Fraunces', Georgia, Cambria, serif;
+}
+
+::selection {
+  background: rgba(232, 54, 60, 0.85);
+  color: #fff;
+}
+
+/* --- Custom scrollbar in the house palette (never the browser default) --- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--fh-brand) transparent;
+}
+::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(13, 13, 15, 0.05);
+}
+.dark ::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--fh-brand), var(--fh-magenta));
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--fh-brand-deep), var(--fh-brand));
+  background-clip: padding-box;
+  border: 3px solid transparent;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* --- Focus visibility for keyboard users --- */
+:focus-visible {
+  outline: 2px solid var(--fh-brand);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* --- Reusable expressive utilities --- */
+.text-gradient {
+  background: linear-gradient(120deg, #e8363c 0%, #d6249f 55%, #2f5bff 120%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Fine film grain for layered, editorial depth. */
+.grain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Multi-stop mesh / aurora backdrop built from the palette. */
+.aurora {
+  background-color: var(--fh-porcelain);
+  background-image:
+    radial-gradient(42rem 30rem at 12% -8%, rgba(232, 54, 60, 0.16), transparent 60%),
+    radial-gradient(38rem 28rem at 92% 4%, rgba(47, 91, 255, 0.14), transparent 62%),
+    radial-gradient(34rem 26rem at 70% 100%, rgba(242, 183, 90, 0.18), transparent 60%),
+    radial-gradient(30rem 24rem at 20% 96%, rgba(214, 36, 159, 0.12), transparent 60%);
+}
+.dark .aurora {
+  background-color: var(--fh-ink);
+  background-image:
+    radial-gradient(42rem 30rem at 12% -8%, rgba(232, 54, 60, 0.22), transparent 60%),
+    radial-gradient(38rem 28rem at 92% 4%, rgba(47, 91, 255, 0.2), transparent 62%),
+    radial-gradient(34rem 26rem at 70% 100%, rgba(242, 183, 90, 0.14), transparent 60%),
+    radial-gradient(30rem 24rem at 20% 96%, rgba(214, 36, 159, 0.16), transparent 60%);
+}
+
+/* --- Motion --- */
+@keyframes fh-toast-in {
+  0% { opacity: 0; transform: translateX(24px) scale(0.98); }
+  100% { opacity: 1; transform: translateX(0) scale(1); }
+}
+.fh-toast-in {
+  animation: fh-toast-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes fh-fade-up {
+  0% { opacity: 0; transform: translateY(18px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.fh-fade-up {
+  animation: fh-fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Slide-over drawer used by the admin product editor. */
+@keyframes fh-slide-in {
+  0% { opacity: 0; transform: translateX(40px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+.fh-slide-in {
+  animation: fh-slide-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Skeleton shimmer for loading states. */
+.fh-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(13, 13, 15, 0.07);
+}
+.dark .fh-skeleton {
+  background: rgba(255, 255, 255, 0.07);
+}
+.fh-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  animation: fh-shimmer 1.6s infinite;
+}
+.dark .fh-skeleton::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.09), transparent);
+}
+@keyframes fh-shimmer {
+  100% { transform: translateX(100%); }
+}
+
+/* Respect users who prefer reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }

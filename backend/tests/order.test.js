@@ -1,183 +1,289 @@
-const request = require('supertest');
-const mongoose = require('mongoose');
-const app = require('../src/app').default;
-
-const originalLog = console.log;
-beforeAll(() => { console.log = () => {}; });
-afterAll(() => { console.log = originalLog; });
+const {
+  app,
+  request,
+  createUser,
+  createCategory,
+  createProduct,
+  addToCart,
+  shippingAddress,
+} = require('./helpers');
 
 describe('Order Endpoints', () => {
-  let server;
-  beforeAll(async () => {
-    const mongoose = require('mongoose');
-    const uri = 'mongodb://127.0.0.1:27017/fashion_test';
-    await mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true });
-    server = app.listen(0);
-  });
-
-  afterAll(async () => {
-    await mongoose.connection.dropDatabase();
-    await mongoose.connection.close();
-    await server.close();
-  });
+  let adminToken;
+  let customerToken;
+  let otherToken;
+  let product;
 
   beforeEach(async () => {
-    const Order = mongoose.model('Order');
-    await Order.deleteMany({});
-    const User = mongoose.model('User');
-    await User.deleteMany({});
-    const Product = mongoose.model('Product');
-    await Product.deleteMany({});
+    const admin = await createUser({
+      username: 'orderadmin',
+      email: 'orderadmin@example.com',
+      role: 'admin',
+    });
+    const customer = await createUser({
+      username: 'ordercustomer',
+      email: 'ordercustomer@example.com',
+    });
+    const other = await createUser({
+      username: 'orderother',
+      email: 'orderother@example.com',
+    });
+    adminToken = admin.token;
+    customerToken = customer.token;
+    otherToken = other.token;
+
+    const category = await createCategory(admin.token, { slug: 'order-category' });
+    product = await createProduct(admin.token, {
+      categoryId: category._id,
+      slug: 'order-product',
+    });
   });
 
   describe('POST /api/orders', () => {
-    test('should create order from cart', async () => {
-      // Register user
-      await request(app).post('/api/auth/register').send({
-        username: 'orderuser', email: 'order@example.com', password: 'password123'
-      });
-      const loginRes = await request(app)
-        .post('/api/auth/login')
-        .send({ email: 'order@example.com', password: 'password123' });
+    test('creates an order from the cart and clears it', async () => {
+      await addToCart(customerToken, product._id, product.variants[0]._id, 2);
 
-      const token = loginRes.body.data.token;
-
-      // Create a product and add to cart
-      await request(app).post('/api/categories').send({
-        categoryName: 'Test', slug: 'test', description: 'Test'
-      });
-      await request(app).post('/api/products').send({
-        categoryId: 'cat0',
-        productName: 'Test Product',
-        slug: 'test-product',
-        description: 'Test product',
-        price: 29.99
-      });
-
-      // Add to cart
-      await request(app)
-        .post('/api/cart/items')
-        .set('Authorization', `Bearer ${token}`)
-        .send({ productId: 'prod0', variantId: 'var0', quantity: 1 });
-
-      // Create order
       const res = await request(app)
         .post('/api/orders')
-        .set('Authorization', `Bearer ${token}`);
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({ shippingAddress, deliveryFee: 2000, discount: 1000 });
 
       expect(res.statusCode).toBe(201);
       expect(res.body.success).toBe(true);
-      expect(res.body.data.order.orderNumber).toBeDefined();
-      expect(res.body.data.order.totalAmount).toBeDefined();
+      const order = res.body.data.order;
+      expect(order.orderNumber).toMatch(/^ORD-\d{4}-/);
+      expect(order.subtotal).toBe(50000); // 2 x 25000
+      expect(order.totalAmount).toBe(51000); // 50000 + 2000 - 1000
+      expect(order.orderStatus).toBe('pending');
+      expect(order.paymentStatus).toBe('unpaid');
+      expect(order.shippingAddress.recipientName).toBe(shippingAddress.recipientName);
+
+      // The cart is emptied after checkout.
+      const cart = await request(app)
+        .get('/api/cart')
+        .set('Authorization', `Bearer ${customerToken}`);
+      expect(cart.body.data.cart.items).toEqual([]);
     });
 
-    test('should fail with empty cart', async () => {
-      await request(app).post('/api/auth/register').send({
-        username: 'emptyorderuser', email: 'empty@example.com', password: 'password123'
-      });
-      const loginRes = await request(app)
-        .post('/api/auth/login')
-        .send({ email: 'empty@example.com', password: 'password123' });
+    test('decrements variant stock', async () => {
+      await addToCart(customerToken, product._id, product.variants[0]._id, 2);
+      await request(app)
+        .post('/api/orders')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({ shippingAddress });
 
-      const token = loginRes.body.data.token;
+      const fetched = await request(app)
+        .get(`/api/products/${product._id}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect(fetched.body.data.product.variants[0].stock).toBe(18); // 20 - 2
+    });
+
+    test('rejects a missing shipping address with 400', async () => {
+      await addToCart(customerToken, product._id, product.variants[0]._id, 1);
 
       const res = await request(app)
         .post('/api/orders')
-        .set('Authorization', `Bearer ${token}`);
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({ shippingAddress: { city: 'Yangon' } });
 
       expect(res.statusCode).toBe(400);
+      expect(res.body.message).toBe('A complete shipping address is required');
+    });
+
+    test('rejects an empty cart with 400', async () => {
+      const res = await request(app)
+        .post('/api/orders')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({ shippingAddress });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body.message).toBe('Your cart is empty');
+    });
+
+    test('requires authentication', async () => {
+      const res = await request(app).post('/api/orders').send({ shippingAddress });
+      expect(res.statusCode).toBe(401);
     });
   });
 
   describe('GET /api/orders/my-orders', () => {
-    test('should get user orders', async () => {
-      await request(app).post('/api/auth/register').send({
-        username: 'myordersuser', email: 'myorders@example.com', password: 'password123'
-      });
-      const loginRes = await request(app)
-        .post('/api/auth/login')
-        .send({ email: 'myorders@example.com', password: 'password123' });
-
-      const token = loginRes.body.data.token;
+    test('lists only the user’s own orders with item counts', async () => {
+      await addToCart(customerToken, product._id, product.variants[0]._id, 1);
+      await request(app)
+        .post('/api/orders')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({ shippingAddress });
 
       const res = await request(app)
         .get('/api/orders/my-orders')
-        .set('Authorization', `Bearer ${token}`);
+        .set('Authorization', `Bearer ${customerToken}`);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.success).toBe(true);
-      expect(Array.isArray(res.body.data.orders)).toBe(true);
+      expect(res.body.data.orders).toHaveLength(1);
+      expect(res.body.data.orders[0].itemCount).toBe(1);
+      expect(res.body.data.totalOrders).toBe(1);
+
+      // The other user sees none.
+      const otherRes = await request(app)
+        .get('/api/orders/my-orders')
+        .set('Authorization', `Bearer ${otherToken}`);
+      expect(otherRes.body.data.orders).toHaveLength(0);
     });
   });
 
   describe('GET /api/orders/my-orders/:id', () => {
-    test('should get order by ID', async () => {
-      await request(app).post('/api/auth/register').send({
-        username: 'orderbyiduser', email: 'orderbyid@example.com', password: 'password123'
-      });
-      const loginRes = await request(app)
-        .post('/api/auth/login')
-        .send({ email: 'orderbyid@example.com', password: 'password123' });
-
-      const token = loginRes.body.data.token;
-
-      // Create order
-      const orderRes = await request(app)
+    test('returns full order details for the owner', async () => {
+      await addToCart(customerToken, product._id, product.variants[0]._id, 1);
+      const order = await request(app)
         .post('/api/orders')
-        .set('Authorization', `Bearer ${token}`);
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({ shippingAddress });
+      const id = order.body.data.order._id;
 
       const res = await request(app)
-        .get(`/api/orders/my-orders/${orderRes.body.data.order._id}`)
-        .set('Authorization', `Bearer ${token}`);
+        .get(`/api/orders/my-orders/${id}`)
+        .set('Authorization', `Bearer ${customerToken}`);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.success).toBe(true);
-      expect(res.body.data.order.orderNumber).toBeDefined();
+      expect(res.body.data.order.orderNumber).toMatch(/^ORD-/);
+      expect(res.body.data.order.items).toHaveLength(1);
+      expect(res.body.data.order.items[0].productName).toBe('Merino Crew Sweater');
+    });
+
+    test('rejects another user with 403', async () => {
+      await addToCart(customerToken, product._id, product.variants[0]._id, 1);
+      const order = await request(app)
+        .post('/api/orders')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({ shippingAddress });
+      const id = order.body.data.order._id;
+
+      const res = await request(app)
+        .get(`/api/orders/my-orders/${id}`)
+        .set('Authorization', `Bearer ${otherToken}`);
+
+      expect(res.statusCode).toBe(403);
+    });
+
+    test('returns 404 for an unknown order', async () => {
+      const res = await request(app)
+        .get('/api/orders/my-orders/aaaaaaaaaaaaaaaaaaaaaaaa')
+        .set('Authorization', `Bearer ${customerToken}`);
+
+      expect(res.statusCode).toBe(404);
     });
   });
 
   describe('PUT /api/orders/:id/cancel', () => {
-    test('should cancel order', async () => {
-      await request(app).post('/api/auth/register').send({
-        username: 'cancelorderuser', email: 'cancel@example.com', password: 'password123'
-      });
-      const loginRes = await request(app)
-        .post('/api/auth/login')
-        .send({ email: 'cancel@example.com', password: 'password123' });
-
-      const token = loginRes.body.data.token;
-
-      // Create order
-      const orderRes = await request(app)
+    test('cancels a pending order and restores stock', async () => {
+      await addToCart(customerToken, product._id, product.variants[0]._id, 2);
+      const order = await request(app)
         .post('/api/orders')
-        .set('Authorization', `Bearer ${token}`);
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({ shippingAddress });
+      const id = order.body.data.order._id;
 
-      // Cancel order
       const res = await request(app)
-        .put(`/api/orders/${orderRes.body.data.order._id}/cancel`)
-        .set('Authorization', `Bearer ${token}`)
+        .put(`/api/orders/${id}/cancel`)
+        .set('Authorization', `Bearer ${customerToken}`)
         .send({ reason: 'Changed my mind' });
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.success).toBe(true);
       expect(res.body.data.order.orderStatus).toBe('cancelled');
+      expect(res.body.data.order.notes).toContain('Changed my mind');
+
+      const fetched = await request(app)
+        .get(`/api/products/${product._id}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect(fetched.body.data.product.variants[0].stock).toBe(20); // restored
     });
 
-    test('should fail to cancel shipped order', async () => {
-      // Similar setup with a shipped order
+    test('refuses to cancel a shipped order with 400', async () => {
+      await addToCart(customerToken, product._id, product.variants[0]._id, 1);
+      const order = await request(app)
+        .post('/api/orders')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({ shippingAddress });
+      const id = order.body.data.order._id;
+
+      await request(app)
+        .put(`/api/orders/admin/${id}/status`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ status: 'shipped' });
+
       const res = await request(app)
-        .put('/api/orders/orderId/cancel')
-        .set('Authorization', 'Bearer testtoken');
+        .put(`/api/orders/${id}/cancel`)
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({ reason: 'too late' });
 
       expect(res.statusCode).toBe(400);
+      expect(res.body.message).toContain('shipped or delivered');
     });
   });
 
-  describe('GET /api/orders/all', () => {
-    test('admin should get all orders', async () => {
-      // This would require admin middleware
-      const res = await request(app).get('/api/orders/all');
-      // Status depends on middleware implementation
+  describe('Admin order management', () => {
+    let orderId;
+
+    beforeEach(async () => {
+      await addToCart(customerToken, product._id, product.variants[0]._id, 1);
+      const order = await request(app)
+        .post('/api/orders')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({ shippingAddress });
+      orderId = order.body.data.order._id;
+    });
+
+    test('admin lists all orders', async () => {
+      const res = await request(app)
+        .get('/api/orders/admin/all')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.data.orders).toHaveLength(1);
+      expect(res.body.data.orders[0].userId.username).toBe('ordercustomer');
+      expect(res.body.data.total).toBe(1);
+    });
+
+    test('a customer gets 403 on the admin list', async () => {
+      const res = await request(app)
+        .get('/api/orders/admin/all')
+        .set('Authorization', `Bearer ${customerToken}`);
+
+      expect(res.statusCode).toBe(403);
+    });
+
+    test('admin updates the order status', async () => {
+      const res = await request(app)
+        .put(`/api/orders/admin/${orderId}/status`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ status: 'confirmed' });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.data.order.orderStatus).toBe('confirmed');
+    });
+
+    test('admin cannot set an invalid status', async () => {
+      const res = await request(app)
+        .put(`/api/orders/admin/${orderId}/status`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ status: 'teleported' });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body.message).toBe('Invalid order status');
+    });
+
+    test('status filter narrows the admin list', async () => {
+      await request(app)
+        .put(`/api/orders/admin/${orderId}/status`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ status: 'confirmed' });
+
+      const res = await request(app)
+        .get('/api/orders/admin/all?status=pending')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.data.orders).toHaveLength(0);
     });
   });
 });

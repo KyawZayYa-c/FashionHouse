@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
-const authMiddleware = require('../middleware/authMiddleware');
-const { registerValidator, loginValidator } = require('../middleware/validator');
+const authMiddleware = require('../src/utils/middleware/authMiddleware');
+const { registerValidator, loginValidator } = require('../src/utils/middleware/validator');
 
 // Public routes (no auth required)
 
@@ -11,6 +11,9 @@ router.post('/register', registerValidator, authController.register);
 
 // POST /login
 router.post('/login', loginValidator, authController.login);
+
+// POST /logout - clears the session cookie
+router.post('/logout', authController.logout);
 
 // GET /me - requires authentication
 router.get('/me', authMiddleware, authController.getMe);

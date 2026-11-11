@@ -2,7 +2,9 @@ const Shipment = require('../models/Shipment');
 const Order = require('../models/Order');
 const AppError = require('../utils/errors').AppError;
 const NotFoundError = require('../utils/errors').NotFoundError;
-const catchAsync = require('../utils/catchAsync');
+const ConflictError = require('../utils/errors').ConflictError;
+const ValidationError = require('../utils/errors').ValidationError;
+const catchAsync = (fn) => fn;
 
 /**
  * Create shipment for an order

@@ -1,119 +1,250 @@
-const request = require('supertest');
-const mongoose = require('mongoose');
-const app = require('../src/app').default;
-
-const originalLog = console.log;
-beforeAll(() => { console.log = () => {}; });
-afterAll(() => { console.log = originalLog; });
+const {
+  app,
+  request,
+  createUser,
+  createCategory,
+  createProduct,
+  addToCart,
+  placeOrder,
+} = require('./helpers');
 
 describe('Review Endpoints', () => {
-  let server;
-  beforeAll(async () => {
-    const mongoose = require('mongoose');
-    const uri = 'mongodb://127.0.0.1:27017/fashion_test';
-    await mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true });
-    server = app.listen(0);
-  });
+  let adminToken;
+  let customerToken;
+  let otherToken;
+  let product;
+  let order;
 
-  afterAll(async () => {
-    await mongoose.connection.dropDatabase();
-    await mongoose.connection.close();
-    await server.close();
-  });
-
+  // Reviews are tied to a delivered purchase: the signed-in user must own an
+  // order that contains the product.
   beforeEach(async () => {
-    const Review = mongoose.model('Review');
-    await Review.deleteMany({});
-    const Product = mongoose.model('Product');
-    await Product.deleteMany({});
-    const Order = mongoose.model('Order');
-    await Order.deleteMany({});
+    const admin = await createUser({
+      username: 'revadmin',
+      email: 'revadmin@example.com',
+      role: 'admin',
+    });
+    const customer = await createUser({
+      username: 'revcustomer',
+      email: 'revcustomer@example.com',
+    });
+    const other = await createUser({
+      username: 'revother',
+      email: 'revother@example.com',
+    });
+    adminToken = admin.token;
+    customerToken = customer.token;
+    otherToken = other.token;
+
+    const category = await createCategory(admin.token, { slug: 'rev-category' });
+    product = await createProduct(admin.token, {
+      categoryId: category._id,
+      slug: 'rev-product',
+    });
+    await addToCart(customerToken, product._id, product.variants[0]._id, 1);
+    order = await placeOrder(customerToken);
   });
 
   describe('POST /api/reviews', () => {
-    test('should create a review', async () => {
-      // Create product and order first
-      await request(app).post('/api/categories').send({
-        categoryName: 'Test', slug: 'test', description: 'Test'
-      });
-      await request(app).post('/api/products').send({
-        categoryId: 'cat0',
-        productName: 'Test Product',
-        slug: 'test-product',
-        description: 'Test product',
-        price: 29.99
-      });
-
-      await request(app).post('/api/auth/register').send({
-        username: 'reviewuser', email: 'review@example.com', password: 'password123'
-      });
-      const loginRes = await request(app)
-        .post('/api/auth/login')
-        .send({ email: 'review@example.com', password: 'password123' });
-
-      const token = loginRes.body.data.token;
-
+    test('creates a review for a purchased product', async () => {
       const res = await request(app)
         .post('/api/reviews')
-        .set('Authorization', `Bearer ${token}`)
-        .send({ productId: 'prod0', orderId: 'order0', rating: 5, reviewText: 'Great product!' });
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({
+          productId: product._id,
+          orderId: order._id,
+          rating: 5,
+          reviewText: 'Excellent quality fabric',
+        });
 
       expect(res.statusCode).toBe(201);
-      expect(res.body.success).toBe(true);
       expect(res.body.data.review.rating).toBe(5);
+      expect(res.body.data.review.reviewText).toBe('Excellent quality fabric');
     });
 
-    test('should fail with invalid rating', async () => {
+    test('rejects a rating outside 1-5 with 400', async () => {
       const res = await request(app)
         .post('/api/reviews')
-        .set('Authorization', 'Bearer testtoken')
-        .send({ productId: 'prod0', rating: 6 });
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({ productId: product._id, orderId: order._id, rating: 6 });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body.message).toContain('Rating must be between 1 and 5');
+    });
+
+    test('rejects a missing productId with 400', async () => {
+      const res = await request(app)
+        .post('/api/reviews')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({ orderId: order._id, rating: 4 });
 
       expect(res.statusCode).toBe(400);
     });
 
-    test('should fail without authentication', async () => {
-      const res = await request(app).post('/api/reviews').send({
-        productId: 'prod0', rating: 5
+    test('rejects a product that is not in the order with 400', async () => {
+      const unbought = await createProduct(adminToken, {
+        categoryId: (
+          await createCategory(adminToken, { categoryName: 'Unbought', slug: 'rev-cat-unbought' })
+        )._id,
+        slug: 'rev-product-unbought',
       });
+
+      const res = await request(app)
+        .post('/api/reviews')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({
+          productId: unbought._id,
+          orderId: order._id,
+          rating: 4,
+          reviewText: 'Never bought this',
+        });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body.message).toContain('was not purchased');
+    });
+
+    test('rejects a review of someone else’s order with 403', async () => {
+      const res = await request(app)
+        .post('/api/reviews')
+        .set('Authorization', `Bearer ${otherToken}`)
+        .send({ productId: product._id, orderId: order._id, rating: 4 });
+
+      expect(res.statusCode).toBe(403);
+    });
+
+    test('rejects a duplicate review with 409', async () => {
+      await request(app)
+        .post('/api/reviews')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({ productId: product._id, orderId: order._id, rating: 5, reviewText: 'First' });
+
+      const res = await request(app)
+        .post('/api/reviews')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({ productId: product._id, orderId: order._id, rating: 2, reviewText: 'Second' });
+
+      expect(res.statusCode).toBe(409);
+    });
+
+    test('requires authentication', async () => {
+      const res = await request(app)
+        .post('/api/reviews')
+        .send({ productId: product._id, orderId: order._id, rating: 5 });
 
       expect(res.statusCode).toBe(401);
     });
   });
 
   describe('GET /api/reviews/product/:productId', () => {
-    test('should get product reviews', async () => {
-      const res = await request(app).get('/api/reviews/product/prod0');
+    test('lists reviews publicly with the reviewer username', async () => {
+      await request(app)
+        .post('/api/reviews')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({ productId: product._id, orderId: order._id, rating: 4, reviewText: 'Nice' });
 
-      // Status depends on implementation
+      const res = await request(app).get(`/api/reviews/product/${product._id}`);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.data.totalReviews).toBe(1);
+      expect(res.body.data.reviews[0].rating).toBe(4);
+      expect(res.body.data.reviews[0].user.username).toBe('revcustomer');
+      expect(res.body.data.reviews[0].user.email).toBeUndefined(); // privacy
+    });
+
+    test('filters by rating', async () => {
+      await request(app)
+        .post('/api/reviews')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({ productId: product._id, orderId: order._id, rating: 4 });
+
+      const res = await request(app).get(`/api/reviews/product/${product._id}?rating=5`);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.data.totalReviews).toBe(0);
     });
   });
 
   describe('GET /api/reviews/my-reviews', () => {
-    test('should get user reviews', async () => {
-      const res = await request(app).get('/api/reviews/my-reviews');
+    test('lists the user’s own reviews with product names', async () => {
+      await request(app)
+        .post('/api/reviews')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({ productId: product._id, orderId: order._id, rating: 3, reviewText: 'OK' });
 
-      // Status depends on authentication
+      const res = await request(app)
+        .get('/api/reviews/my-reviews')
+        .set('Authorization', `Bearer ${customerToken}`);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.data.totalReviews).toBe(1);
+      expect(res.body.data.reviews[0].product.productName).toBe(product.productName);
     });
   });
 
   describe('PUT /api/reviews/:id', () => {
-    test('should update review', async () => {
-      const res = await request(app)
-        .put('/api/reviews/reviewId')
-        .set('Authorization', 'Bearer testtoken');
+    test('the owner updates rating and text', async () => {
+      const created = await request(app)
+        .post('/api/reviews')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({ productId: product._id, orderId: order._id, rating: 3, reviewText: 'OK' });
+      const reviewId = created.body.data.review._id;
 
-      // Status depends on ownership check
+      const res = await request(app)
+        .put(`/api/reviews/${reviewId}`)
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({ rating: 5, reviewText: 'Grew on me' });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.data.review.rating).toBe(5);
+      expect(res.body.data.review.reviewText).toBe('Grew on me');
+    });
+
+    test('another user gets 403', async () => {
+      const created = await request(app)
+        .post('/api/reviews')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({ productId: product._id, orderId: order._id, rating: 3 });
+      const reviewId = created.body.data.review._id;
+
+      const res = await request(app)
+        .put(`/api/reviews/${reviewId}`)
+        .set('Authorization', `Bearer ${otherToken}`)
+        .send({ rating: 1 });
+
+      expect(res.statusCode).toBe(403);
     });
   });
 
   describe('DELETE /api/reviews/:id', () => {
-    test('should delete review', async () => {
-      const res = await request(app)
-        .delete('/api/reviews/reviewId')
-        .set('Authorization', 'Bearer testtoken');
+    test('the owner deletes their review', async () => {
+      const created = await request(app)
+        .post('/api/reviews')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({ productId: product._id, orderId: order._id, rating: 2 });
+      const reviewId = created.body.data.review._id;
 
-      // Status depends on ownership check
+      const res = await request(app)
+        .delete(`/api/reviews/${reviewId}`)
+        .set('Authorization', `Bearer ${customerToken}`);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.data.reviewId).toBe(reviewId);
+
+      const list = await request(app).get(`/api/reviews/product/${product._id}`);
+      expect(list.body.data.totalReviews).toBe(0);
+    });
+
+    test('another user gets 403', async () => {
+      const created = await request(app)
+        .post('/api/reviews')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({ productId: product._id, orderId: order._id, rating: 2 });
+      const reviewId = created.body.data.review._id;
+
+      const res = await request(app)
+        .delete(`/api/reviews/${reviewId}`)
+        .set('Authorization', `Bearer ${otherToken}`);
+
+      expect(res.statusCode).toBe(403);
     });
   });
 });

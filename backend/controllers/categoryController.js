@@ -1,9 +1,9 @@
-const catchAsync = require('../../utils/catchAsync');
-const responseHandler = require('../../utils/responseHandler');
-const Category = require('../models/Category');
-const AppError = require('../../utils/errors').AppError;
-const NotFoundError = require('../../utils/errors').NotFoundError;
-const ValidationError = require('../../utils/errors').ValidationError;
+const catchAsync = require('../src/utils/catchAsync');
+const responseHandler = require('../src/utils/responseHandler');
+const Category = require('../src/models/Category');
+const AppError = require('../src/utils/errors').AppError;
+const NotFoundError = require('../src/utils/errors').NotFoundError;
+const ValidationError = require('../src/utils/errors').ValidationError;
 
 // Create category
 const createCategory = catchAsync(async (req, res) => {
@@ -56,7 +56,7 @@ const getCategories = catchAsync(async (req, res) => {
 
 // Get category by ID
 const getCategoryById = catchAsync(async (req, res) => {
-  const { categoryId } = req.params;
+  const categoryId = req.params.categoryId || req.params.id;
 
   if (!categoryId) {
     responseHandler.error(res, 400, 'Category ID is required');
@@ -75,7 +75,7 @@ const getCategoryById = catchAsync(async (req, res) => {
 
 // Update category
 const updateCategory = catchAsync(async (req, res) => {
-  const { categoryId } = req.params;
+  const categoryId = req.params.categoryId || req.params.id;
   const { categoryName, slug, description, status } = req.body;
 
   if (!categoryId) {
@@ -118,7 +118,7 @@ const updateCategory = catchAsync(async (req, res) => {
 
 // Delete category
 const deleteCategory = catchAsync(async (req, res) => {
-  const { categoryId } = req.params;
+  const categoryId = req.params.categoryId || req.params.id;
 
   if (!categoryId) {
     responseHandler.error(res, 400, 'Category ID is required');

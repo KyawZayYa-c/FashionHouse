@@ -1,8 +1,8 @@
-const catchAsync = require('../../utils/catchAsync');
-const responseHandler = require('../../utils/responseHandler');
-const adminService = require('../services/adminService');
-const AppError = require('../../utils/errors').AppError;
-const ForbiddenError = require('../../utils/errors').ForbiddenError;
+const catchAsync = require('../src/utils/catchAsync');
+const responseHandler = require('../src/utils/responseHandler');
+const adminService = require('../src/services/adminService');
+const AppError = require('../src/utils/errors').AppError;
+const ForbiddenError = require('../src/utils/errors').ForbiddenError;
 
 // Admin-only middleware will be applied in routes
 // These controllers assume admin authentication has been verified
@@ -68,7 +68,8 @@ const getRecentOrders = catchAsync(async (req, res) => {
   // Recent orders will be integrated with admin service in later phase
   const orders = await adminService.getRecentOrders({ limit: Number(limit) });
 
-  responseHandler.success(res, 200, { orders }, 'Recent orders retrieved successfully');
+  // Return the paginated result directly so `data.orders` is the array.
+  responseHandler.success(res, 200, orders, 'Recent orders retrieved successfully');
 });
 
 module.exports = {

@@ -1,9 +1,19 @@
-const catchAsync = require('../../utils/catchAsync');
-const responseHandler = require('../../utils/responseHandler');
-const User = require('../models/User');
-const AppError = require('../../utils/errors').AppError;
-const ValidationError = require('../../utils/errors').ValidationError;
-const NotFoundError = require('../../utils/errors').NotFoundError;
+const catchAsync = require('../src/utils/catchAsync');
+const responseHandler = require('../src/utils/responseHandler');
+const User = require('../src/models/User');
+const AppError = require('../src/utils/errors').AppError;
+const ValidationError = require('../src/utils/errors').ValidationError;
+const NotFoundError = require('../src/utils/errors').NotFoundError;
+
+// Persist the JWT as an httpOnly cookie so sessions survive page refreshes.
+const setTokenCookie = (res, token) => {
+  res.cookie('token', token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+};
 
 // Register a new user
 const register = catchAsync(async (req, res) => {
@@ -39,6 +49,7 @@ const register = catchAsync(async (req, res) => {
 
   // Generate JWT token
   const token = newUser.generateAuthToken();
+  setTokenCookie(res, token);
 
   responseHandler.success(res, 201, {
     token,
@@ -68,8 +79,9 @@ const login = catchAsync(async (req, res) => {
     return;
   }
 
-  // Check if password is correct (compare plain text - in production use bcrypt)
-  if (user.passwordHash !== password) {
+  // Check if password is correct (bcrypt comparison against stored hash)
+  const passwordMatches = await user.comparePassword(password);
+  if (!passwordMatches) {
     responseHandler.error(res, 401, 'Invalid email or password');
     return;
   }
@@ -82,6 +94,7 @@ const login = catchAsync(async (req, res) => {
 
   // Generate JWT token
   const token = user.generateAuthToken();
+  setTokenCookie(res, token);
 
   responseHandler.success(res, 200, {
     token,
@@ -111,23 +124,30 @@ const updateProfile = catchAsync(async (req, res) => {
     return;
   }
 
-  const { name, phone, address } = req.body;
+  // Only real schema fields are editable here. `username` and `phone` persist;
+  // email is the account identity and is intentionally not changed via this route.
+  const { username, phone } = req.body;
 
-  // Update user profile fields
-  if (name) req.user.name = name;
-  if (phone) req.user.phone = phone;
-  if (address) req.user.address = address;
+  if (username !== undefined) {
+    const trimmed = String(username).trim().toLowerCase();
+    if (trimmed.length < 3) {
+      responseHandler.error(res, 400, 'Username must be at least 3 characters');
+      return;
+    }
+    if (trimmed !== req.user.username) {
+      const taken = await User.findOne({ username: trimmed, _id: { $ne: req.user._id } });
+      if (taken) {
+        responseHandler.error(res, 409, 'Username already taken');
+        return;
+      }
+      req.user.username = trimmed;
+    }
+  }
+  if (phone !== undefined) req.user.phone = String(phone).trim();
 
-  await req.user.save({ validateBeforeSave: false });
+  await req.user.save();
 
-  responseHandler.success(res, 200, {
-    user: {
-      id: req.user._id,
-      username: req.user.username,
-      email: req.user.email,
-      role: req.user.role,
-    },
-  }, 'Profile updated successfully');
+  responseHandler.success(res, 200, { user: req.user }, 'Profile updated successfully');
 });
 
 // Change password
@@ -144,15 +164,17 @@ const changePassword = catchAsync(async (req, res) => {
     return;
   }
 
-  // Check if current password is correct
-  if (req.user.passwordHash !== currentPassword) {
+  // Check if current password is correct (reload with the hidden hash)
+  const userWithPassword = await User.findById(req.user._id).select('+passwordHash');
+  const currentMatches = await userWithPassword.comparePassword(currentPassword);
+  if (!currentMatches) {
     responseHandler.error(res, 401, 'Current password is incorrect');
     return;
   }
 
-  // Update password
-  req.user.passwordHash = newPassword;
-  await req.user.save({ validateBeforeSave: false });
+  // Update password (pre-save hook re-hashes it)
+  userWithPassword.passwordHash = newPassword;
+  await userWithPassword.save();
 
   responseHandler.success(res, 200, {}, 'Password changed successfully');
 });
@@ -208,9 +230,20 @@ const manageAddresses = catchAsync(async (req, res) => {
   responseHandler.success(res, 200, { action }, 'Address management completed');
 });
 
+// Logout - clear the session cookie
+const logout = catchAsync(async (req, res) => {
+  res.clearCookie('token', {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+  });
+  responseHandler.success(res, 200, {}, 'Logged out successfully');
+});
+
 module.exports = {
   register,
   login,
+  logout,
   getMe,
   updateProfile,
   changePassword,

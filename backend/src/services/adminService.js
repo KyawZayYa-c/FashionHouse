@@ -3,8 +3,10 @@ const Product = require('../models/Product');
 const User = require('../models/User');
 const AppError = require('../utils/errors').AppError;
 const NotFoundError = require('../utils/errors').NotFoundError;
-const catchAsync = require('../utils/catchAsync');
-const AggregationPaginator = require('../utils/aggregationPaginator');
+const ValidationError = require('../utils/errors').ValidationError;
+// Service functions are plain async functions, not Express handlers. Errors
+// thrown here propagate to the calling controller's catchAsync wrapper.
+const catchAsync = (fn) => fn;
 
 /**
  * Get dashboard statistics
@@ -210,7 +212,7 @@ const getLowStockProducts = catchAsync(async (threshold = 10) => {
   const products = await Product.find({
     'variants.stock': { $lte: threshold },
   })
-    .select('productName brand variants.price variants.stock')
+    .select('productName slug brand variants.price variants.stock')
     .sort({ 'variants.stock': 1 });
 
   return products;

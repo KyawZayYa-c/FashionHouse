@@ -1,9 +1,9 @@
-const catchAsync = require('../../utils/catchAsync');
-const responseHandler = require('../../utils/responseHandler');
-const orderService = require('../services/orderService');
-const AppError = require('../../utils/errors').AppError;
-const NotFoundError = require('../../utils/errors').NotFoundError;
-const ValidationError = require('../../utils/errors').ValidationError;
+const catchAsync = require('../src/utils/catchAsync');
+const responseHandler = require('../src/utils/responseHandler');
+const orderService = require('../src/services/orderService');
+const AppError = require('../src/utils/errors').AppError;
+const NotFoundError = require('../src/utils/errors').NotFoundError;
+const ValidationError = require('../src/utils/errors').ValidationError;
 
 const createOrder = catchAsync(async (req, res) => {
   if (!req.user) {
@@ -11,12 +11,15 @@ const createOrder = catchAsync(async (req, res) => {
     return;
   }
 
-  const { deliveryFee, discount } = req.body;
+  const { deliveryFee, discount, shippingAddress, notes, paymentMethod } = req.body;
 
   // Create order from cart using service
   const order = await orderService.createOrderFromCart(req.user.id, {
     deliveryFee,
     discount,
+    shippingAddress,
+    notes,
+    paymentMethod,
   });
 
   responseHandler.success(res, 201, { order }, 'Order created successfully');
@@ -42,7 +45,7 @@ const getMyOrderById = catchAsync(async (req, res) => {
     return;
   }
 
-  const { orderId } = req.params;
+  const orderId = req.params.orderId || req.params.id;
 
   if (!orderId) {
     responseHandler.error(res, 400, 'Order ID is required');
@@ -64,7 +67,7 @@ const cancelOrder = catchAsync(async (req, res) => {
     return;
   }
 
-  const { orderId } = req.params;
+  const orderId = req.params.orderId || req.params.id;
   const { reason } = req.body;
 
   if (!orderId) {
@@ -103,7 +106,7 @@ const getAllOrders = catchAsync(async (req, res) => {
 });
 
 const getOrderById = catchAsync(async (req, res) => {
-  const { orderId } = req.params;
+  const orderId = req.params.orderId || req.params.id;
 
   if (!orderId) {
     responseHandler.error(res, 400, 'Order ID is required');
@@ -116,6 +119,23 @@ const getOrderById = catchAsync(async (req, res) => {
   responseHandler.success(res, 200, { order }, 'Order retrieved successfully');
 });
 
+const updateOrderStatus = catchAsync(async (req, res) => {
+  const orderId = req.params.id || req.params.orderId;
+  const { status } = req.body;
+
+  if (!orderId) {
+    responseHandler.error(res, 400, 'Order ID is required');
+    return;
+  }
+  if (!status) {
+    responseHandler.error(res, 400, 'Order status is required');
+    return;
+  }
+
+  const order = await orderService.updateOrderStatus(orderId, status);
+  responseHandler.success(res, 200, { order }, 'Order status updated successfully');
+});
+
 module.exports = {
   createOrder,
   getMyOrders,
@@ -123,4 +143,5 @@ module.exports = {
   cancelOrder,
   getAllOrders,
   getOrderById,
+  updateOrderStatus,
 };

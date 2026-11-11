@@ -1,10 +1,10 @@
-const catchAsync = require('../../utils/catchAsync');
-const responseHandler = require('../../utils/responseHandler');
-const Product = require('../models/Product');
-const Category = require('../models/Category');
-const AppError = require('../../utils/errors').AppError;
-const NotFoundError = require('../../utils/errors').NotFoundError;
-const ValidationError = require('../../utils/errors').ValidationError;
+const catchAsync = require('../src/utils/catchAsync');
+const responseHandler = require('../src/utils/responseHandler');
+const Product = require('../src/models/Product');
+const Category = require('../src/models/Category');
+const AppError = require('../src/utils/errors').AppError;
+const NotFoundError = require('../src/utils/errors').NotFoundError;
+const ValidationError = require('../src/utils/errors').ValidationError;
 
 // Create product
 const createProduct = catchAsync(async (req, res) => {
@@ -43,9 +43,11 @@ const createProduct = catchAsync(async (req, res) => {
     }
   }
 
-  // Parse variants if provided
+  // Accept variants/images as either a JSON array or a JSON-encoded string.
   let parsedVariants = [];
-  if (variants && typeof variants === 'string') {
+  if (Array.isArray(variants)) {
+    parsedVariants = variants;
+  } else if (typeof variants === 'string' && variants.trim()) {
     try {
       parsedVariants = JSON.parse(variants);
     } catch (e) {
@@ -56,7 +58,9 @@ const createProduct = catchAsync(async (req, res) => {
 
   // Parse images if provided
   let parsedImages = [];
-  if (images && typeof images === 'string') {
+  if (Array.isArray(images)) {
+    parsedImages = images;
+  } else if (typeof images === 'string' && images.trim()) {
     try {
       parsedImages = JSON.parse(images);
     } catch (e) {
@@ -133,7 +137,7 @@ const getProducts = catchAsync(async (req, res) => {
 
 // Get product by ID
 const getProductById = catchAsync(async (req, res) => {
-  const { productId } = req.params;
+  const productId = req.params.productId || req.params.id;
 
   if (!productId) {
     responseHandler.error(res, 400, 'Product ID is required');
@@ -172,7 +176,7 @@ const getProductBySlug = catchAsync(async (req, res) => {
 
 // Update product
 const updateProduct = catchAsync(async (req, res) => {
-  const { productId } = req.params;
+  const productId = req.params.productId || req.params.id;
 
   if (!productId) {
     responseHandler.error(res, 400, 'Product ID is required');
@@ -222,8 +226,30 @@ const updateProduct = catchAsync(async (req, res) => {
   if (description !== undefined) product.description = description;
   if (brand) product.brand = brand;
   if (price !== undefined) product.price = Number(price);
-  if (variants !== undefined) product.variants = parsedVariants || product.variants;
-  if (images !== undefined) product.images = parsedImages || product.images;
+  if (variants !== undefined) {
+    if (Array.isArray(variants)) {
+      product.variants = variants;
+    } else if (typeof variants === 'string') {
+      try {
+        product.variants = JSON.parse(variants);
+      } catch (e) {
+        responseHandler.error(res, 400, 'Invalid variants format');
+        return;
+      }
+    }
+  }
+  if (images !== undefined) {
+    if (Array.isArray(images)) {
+      product.images = images;
+    } else if (typeof images === 'string') {
+      try {
+        product.images = JSON.parse(images);
+      } catch (e) {
+        responseHandler.error(res, 400, 'Invalid images format');
+        return;
+      }
+    }
+  }
   if (status !== undefined) product.status = status;
   if (isFeatured !== undefined) product.isFeatured = isFeatured;
 
@@ -234,7 +260,7 @@ const updateProduct = catchAsync(async (req, res) => {
 
 // Delete product (soft delete by changing status)
 const deleteProduct = catchAsync(async (req, res) => {
-  const { productId } = req.params;
+  const productId = req.params.productId || req.params.id;
 
   if (!productId) {
     responseHandler.error(res, 400, 'Product ID is required');

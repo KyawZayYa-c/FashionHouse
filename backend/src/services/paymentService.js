@@ -2,7 +2,9 @@ const Payment = require('../models/Payment');
 const Order = require('../models/Order');
 const AppError = require('../utils/errors').AppError;
 const NotFoundError = require('../utils/errors').NotFoundError;
-const catchAsync = require('../utils/catchAsync');
+const ConflictError = require('../utils/errors').ConflictError;
+const ValidationError = require('../utils/errors').ValidationError;
+const catchAsync = (fn) => fn;
 
 /**
  * Create payment record

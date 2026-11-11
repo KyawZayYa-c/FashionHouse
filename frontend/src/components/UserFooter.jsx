@@ -45,11 +45,11 @@ const UserFooter = () => {
               {t('footer.shippingTitle')}
             </h3>
             <ul className="space-y-3 text-sm text-gray-500 dark:text-gray-400">
-              <li><Link to="/new" className="hover:text-[#d81c22] transition-colors">{t('footer.newProducts')}</Link></li>
-              <li><Link to="/best-sellers" className="hover:text-[#d81c22] transition-colors">{t('footer.bestSellers')}</Link></li>
-              <li><Link to="/manufacturers" className="hover:text-[#d81c22] transition-colors">{t('footer.manufacturers')}</Link></li>
-              <li><Link to="/suppliers" className="hover:text-[#d81c22] transition-colors">{t('footer.suppliers')}</Link></li>
-              <li><Link to="/specials" className="hover:text-[#d81c22] transition-colors">{t('footer.specials')}</Link></li>
+              <li><Link to="/shop?sort=newest" className="hover:text-[#d81c22] transition-colors">{t('footer.newProducts')}</Link></li>
+              <li><Link to="/shop?featured=true" className="hover:text-[#d81c22] transition-colors">{t('footer.bestSellers')}</Link></li>
+              <li><Link to="/shop?search=shoe" className="hover:text-[#d81c22] transition-colors">{t('footer.manufacturers')}</Link></li>
+              <li><Link to="/shop?search=accessory" className="hover:text-[#d81c22] transition-colors">{t('footer.suppliers')}</Link></li>
+              <li><Link to="/shop" className="hover:text-[#d81c22] transition-colors">{t('footer.specials')}</Link></li>
             </ul>
           </div>
 
@@ -78,12 +78,12 @@ const UserFooter = () => {
               <path d="M6 6V4C6 2.89543 6.89543 2 8 2H16C17.1046 2 18 2.89543 18 4V6H21C21.5523 6 22 6.44772 22 7V20C22 21.1046 21.1046 22 20 22H4C2.89543 22 2 21.1046 2 20V7C2 6.44772 2.44772 6 3 6H6ZM8 6H16V4H8V6ZM4 8V20H20V8H4Z" fill="currentColor"/>
               <path d="M12 11C10.3431 11 9 12.3431 9 14C9 15.6569 10.3431 17 12 17C13.6569 17 15 15.6569 15 14C15 12.3431 13.6569 11 12 11Z" fill="currentColor"/>
             </svg>
-            <span className="text-3xl font-bold tracking-tight text-black dark:text-white transition-colors" style={{ fontFamily: 'IBM Plex Mono, monospace' }}>
-              arderobe
+            <span className="font-display text-3xl font-black tracking-tight text-black dark:text-white transition-colors">
+              Fashion<span className="text-brand">House</span>
             </span>
           </div>
 
-          <p className="text-sm text-gray-400 dark:text-gray-500 text-center">
+          <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
             {t('footer.copyright')}
           </p>
         </div>

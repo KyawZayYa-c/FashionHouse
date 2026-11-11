@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const authMiddleware = require('../middleware/authMiddleware');
+const authMiddleware = require('../src/utils/middleware/authMiddleware');
 const reviewController = require('../controllers/reviewController');
 
 // Public routes - product reviews viewing

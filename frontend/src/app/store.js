@@ -1,34 +1,39 @@
 import { configureStore } from '@reduxjs/toolkit'
-import authReducer from '../features/auth/authSlice'
-import cartReducer from '../features/cart/cartSlice'
-import wishlistReducer from '../features/wishlist/wishlistSlice'
-import themeReducer from '../features/theme/themeSlice'
-import languageReducer from '../features/language/languageSlice'
-import { setupListeners } from '@reduxjs/toolkit/query'
-import { authApi } from '../features/auth/authApi'
-import { cartApi } from '../features/cart/cartApi'
-import { wishlistApi } from '../features/wishlist/wishlistApi'
+import authReducer from '../features/auth/authSlice.jsx'
+import cartReducer, { persistCart } from '../features/cart/cartSlice.jsx'
+import wishlistReducer, { persistWishlist } from '../features/wishlist/wishlistSlice.jsx'
 
+// A single, plain Redux store. Auth/cart/wishlist are the only state sources;
+// theme lives in ThemeContext and language in i18next, so they are not duplicated here.
 export const store = configureStore({
   reducer: {
     auth: authReducer,
     cart: cartReducer,
     wishlist: wishlistReducer,
-    theme: themeReducer,
-    language: languageReducer,
-    [authApi.reducerPath]: authApi.reducer,
-    [cartApi.reducerPath]: cartApi.reducer,
-    [wishlistApi.reducerPath]: wishlistApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
+      // Cart/wishlist hold plain serialisable data, but keep this lenient so a
+      // stray Date from the API never crashes dev tooling.
       serializableCheck: false,
-    }).concat(authApi.middleware, cartApi.middleware, wishlistApi.middleware),
-  devTools: process.env.NODE_ENV !== 'production',
+    }),
+  devTools: import.meta.env.DEV,
 })
 
-// Initialize RTK Query listeners for cache refetching on focus, etc.
-setupListeners(store.dispatch)
+// Persist cart + wishlist to localStorage whenever they change so a guest's
+// selections survive a refresh (and are synced to the server after login).
+let prevCart = store.getState().cart.items
+let prevWishlist = store.getState().wishlist.items
+store.subscribe(() => {
+  const state = store.getState()
+  if (state.cart.items !== prevCart) {
+    prevCart = state.cart.items
+    persistCart(state.cart.items)
+  }
+  if (state.wishlist.items !== prevWishlist) {
+    prevWishlist = state.wishlist.items
+    persistWishlist(state.wishlist.items)
+  }
+})
 
-export type RootState = ReturnType<typeof store.getState>
-export type AppDispatch = typeof store.dispatch
+export default store

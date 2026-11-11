@@ -1,60 +1,90 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { RouterProvider, createBrowserRouter, Route } from 'react-router-dom'
+import { Provider } from 'react-redux'
+import { RouterProvider, createBrowserRouter, Navigate } from 'react-router-dom'
 import './i18n'
 import './index.css'
 
+import { store } from './app/store'
 import { ThemeProvider } from './contexts/ThemeContext'
+import { ToastProvider } from './contexts/ToastContext'
 import { RootProvider } from './app/provider'
 import { ProtectedRoute, AdminRoute, GuestRoute } from './components/routes/ProtectedRoute'
 
 import UserLayout from './layouts/UserLayout'
 import AdminLayout from './layouts/AdminLayout'
+
+// Storefront pages
 import Home from './pages/Home'
 import Shop from './pages/Shop'
-import Login from './pages/Login'
+import ProductDetail from './pages/ProductDetail'
+import About from './pages/About'
 import Contact from './pages/Contact'
-import About from './pages/About';
+import Cart from './pages/Cart'
+import Wishlist from './pages/Wishlist'
+import Checkout from './pages/Checkout'
+import Login from './pages/Login'
+import Account from './pages/Account'
+import Orders from './pages/Orders'
+import OrderDetail from './pages/OrderDetail'
+import NotFound from './pages/NotFound'
+
+// Admin pages
 import AdminDashboard from './pages/AdminDashboard'
+import AdminProducts from './pages/AdminProducts'
+import AdminOrders from './pages/AdminOrders'
+import AdminUsers from './pages/AdminUsers'
+import AdminSettings from './pages/AdminSettings'
 
 const router = createBrowserRouter([
   {
     path: '/',
     element: <RootProvider />,
     children: [
-      // Public routes - guest access (login page visible to all, including authenticated)
-      <Route path="login" element={<Login />} />
-
-      // Protected customer routes - need authentication
-      <Route path="cart" element={
-        <ProtectedRoute allowedRoles={['customer', 'admin']}>
-          <h1>Cart Page</h1>
-        </ProtectedRoute>}
-      />
-
-      // Admin routes - protected
-      <Route path="/admin" element={<AdminLayout />}>
-        <Route index element={<AdminDashboard />} />
-        <Route path="products" element={<h1>Manage Products</h1>} />
-      </Route>,
-    ],
-  },
-  {
-    path: '/admin',
-    element: <AdminLayout />,
-    children: [
-      { index: true, element: <AdminDashboard /> },
-      { path: 'products', element: <h1>Manage Products</h1> },
+      // Storefront (navbar + footer)
+      {
+        element: <UserLayout />,
+        children: [
+          { index: true, element: <Home /> },
+          { path: 'shop', element: <Shop /> },
+          { path: 'product/:slug', element: <ProductDetail /> },
+          { path: 'about', element: <About /> },
+          { path: 'contact', element: <Contact /> },
+          { path: 'wishlist', element: <Wishlist /> },
+          { path: 'cart', element: <Cart /> },
+          { path: 'login', element: <GuestRoute><Login /></GuestRoute> },
+          { path: 'checkout', element: <ProtectedRoute><Checkout /></ProtectedRoute> },
+          { path: 'account', element: <ProtectedRoute><Account /></ProtectedRoute> },
+          { path: 'orders', element: <ProtectedRoute><Orders /></ProtectedRoute> },
+          { path: 'orders/:id', element: <ProtectedRoute><OrderDetail /></ProtectedRoute> },
+          { path: '*', element: <NotFound /> },
+        ],
+      },
+      // Admin area (sidebar layout, admin-only)
+      {
+        path: 'admin',
+        element: <AdminRoute><AdminLayout /></AdminRoute>,
+        children: [
+          { index: true, element: <Navigate to="/admin/dashboard" replace /> },
+          { path: 'dashboard', element: <AdminDashboard /> },
+          { path: 'products', element: <AdminProducts /> },
+          { path: 'orders', element: <AdminOrders /> },
+          { path: 'users', element: <AdminUsers /> },
+          { path: 'settings', element: <AdminSettings /> },
+        ],
+      },
     ],
   },
 ])
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <RootProvider>
+    <Provider store={store}>
       <ThemeProvider>
-        <RouterProvider router={router} />
+        <ToastProvider>
+          <RouterProvider router={router} />
+        </ToastProvider>
       </ThemeProvider>
-    </RootProvider>
+    </Provider>
   </React.StrictMode>
 )

@@ -1,373 +1,323 @@
-import React, { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
-import Shop from "../pages/Shop";
+import React, { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import {
+  ArrowRight, ArrowUpRight, Truck, ShieldCheck, RotateCcw, Headphones,
+  Sparkles, Mail, Check, Loader2,
+} from 'lucide-react'
+import { catalogApi } from '../services/baseApi.jsx'
+import { productImage } from '../lib/catalog'
+import { useToast } from '../hooks/useToast'
+import ProductCard from '../components/ProductCard'
+import ProductImage from '../components/ProductImage'
 
-import { useNavigate } from "react-router-dom";
+const HERO_IMAGE =
+  'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80'
+const EDITORIAL_IMAGE =
+  'https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80'
+
 const Home = () => {
-  const { t } = useTranslation();
-  const navigate = useNavigate();
+  const { t } = useTranslation()
+  const toast = useToast()
+  const [featured, setFeatured] = useState([])
+  const [categories, setCategories] = useState([])
+  const [products, setProducts] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [email, setEmail] = useState('')
+  const [subscribed, setSubscribed] = useState(false)
+  const [subscribing, setSubscribing] = useState(false)
 
-  // --- DARK MODE STATE ---
-  const [isDarkMode, setIsDarkMode] = useState(false);
-
-  // Initialize theme based on user's system preference or saved choice
   useEffect(() => {
-    const isDark =
-      localStorage.getItem("theme") === "dark" ||
-      (!("theme" in localStorage) &&
-        window.matchMedia("(prefers-color-scheme: dark)").matches);
-    setIsDarkMode(isDark);
-    if (isDark) document.documentElement.classList.add("dark");
-  }, []);
-
-  // Toggle function
-  const toggleTheme = () => {
-    if (isDarkMode) {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-      setIsDarkMode(false);
-    } else {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-      setIsDarkMode(true);
+    let alive = true
+    const load = async () => {
+      try {
+        const [f, c, p] = await Promise.all([
+          catalogApi.getFeatured(8),
+          catalogApi.getCategories(),
+          catalogApi.getProducts({ status: 'active', limit: 100 }),
+        ])
+        if (!alive) return
+        setFeatured(f.products || [])
+        setCategories(c.categories || [])
+        setProducts(p.products || [])
+      } catch {
+        if (alive) toast.error(t('home.loadError'))
+      } finally {
+        if (alive) setLoading(false)
+      }
     }
-  };
+    load()
+    return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  // Product data
-  const products = [
-    {
-      id: 1,
-      name: t("home.snapbackCap"),
-      price: "30,000 Kyats",
-      category: t("home.accessories"),
-      isSale: true,
-      image:
-        "https://images.unsplash.com/photo-1588850561407-ed78c282e89b?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
-    },
-    {
-      id: 2,
-      name: t("home.grayShoes"),
-      price: "50,000 Kyats",
-      category: t("home.sneakers"),
-      isSale: false,
-      image:
-        "https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
-    },
-    {
-      id: 3,
-      name: t("home.blackTshirt"),
-      price: "25,000 Kyats",
-      category: t("home.tshirts"),
-      isSale: true,
-      image:
-        "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
-    },
-    {
-      id: 4,
-      name: t("home.retroSunglasses"),
-      price: "5500 Kyats",
-      category: t("home.accessories"),
-      isSale: false,
-      image:
-        "https://images.unsplash.com/photo-1511499767150-a48a237f0083?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
-    },
-  ];
+  // A representative image per category, drawn from the live catalog.
+  const categoryTiles = useMemo(() => {
+    return categories.slice(0, 6).map((c) => {
+      const match = products.find(
+        (p) => String(p.categoryId?._id || p.categoryId) === String(c._id)
+      )
+      return { ...c, image: match ? productImage(match) : null }
+    })
+  }, [categories, products])
+
+  const brandCount = useMemo(
+    () => new Set(products.map((p) => p.brand).filter(Boolean)).size,
+    [products]
+  )
+
+  const subscribe = (e) => {
+    e.preventDefault()
+    const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+    if (!valid) {
+      toast.error(t('newsletter.invalid'))
+      return
+    }
+    setSubscribing(true)
+    setTimeout(() => {
+      setSubscribing(false)
+      setSubscribed(true)
+      setEmail('')
+      toast.success(t('newsletter.success'))
+    }, 700)
+  }
+
+  const marqueeItems = [t('home.marquee1'), t('home.marquee2'), t('home.marquee3'), t('home.marquee4')]
+  const valueProps = [
+    { icon: ShieldCheck, title: t('home.securePayment'), sub: t('home.securePaymentSub') },
+    { icon: RotateCcw, title: t('home.return30'), sub: t('home.return30Sub') },
+    { icon: Headphones, title: t('home.support247'), sub: t('home.support247Sub') },
+    { icon: Truck, title: t('home.freeDelivery'), sub: t('home.freeDeliverySub') },
+  ]
+  const stats = [
+    { value: `${products.length || 14}+`, label: t('home.statProducts') },
+    { value: '2.4k+', label: t('home.statCustomers') },
+    { value: `${brandCount || 8}`, label: t('home.statBrands') },
+    { value: '30+', label: t('home.statDelivery') },
+  ]
 
   return (
-    // Added dark:bg-gray-950 to the main wrapper
-    <div className="w-full flex flex-col font-sans bg-white dark:bg-gray-950 transition-colors duration-300 relative">
-      {/* --- DARK MODE TOGGLE BUTTON --- */}
-      {/* Placed floating in the top right for easy access */}
-      <button
-        onClick={toggleTheme}
-        className="fixed bottom-8 right-8 z-50 p-4 rounded-full bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-gray-200 shadow-lg hover:scale-110 transition-transform duration-300"
-        aria-label="Toggle Dark Mode"
-      >
-        {isDarkMode ? (
-          // Sun Icon
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-6 w-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-            />
-          </svg>
-        ) : (
-          // Moon Icon
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-6 w-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-            />
-          </svg>
-        )}
-      </button>
-
-      {/* --- HERO SECTION --- */}
-      {/* Updated background for dark mode */}
-      <div className="w-full min-h-[calc(100vh-80px)] bg-white dark:bg-gray-900 flex flex-col lg:flex-row overflow-hidden transition-colors duration-300">
-        <div className="flex-1 flex flex-col justify-center px-8 md:px-16 lg:px-24 py-16 lg:py-0">
-          {/* Updated text color */}
-          <h1 className="text-5xl md:text-7xl lg:text-[5.5rem] font-serif font-black text-gray-900 dark:text-white leading-[1.1] mb-6 transition-colors duration-300">
-            Brand New <br />
-            Collection
-          </h1>
-          {/* Updated text color */}
-          <p className="text-gray-600 dark:text-gray-400 text-base md:text-lg max-w-lg mb-8 leading-relaxed transition-colors duration-300">
-            {t("home.subtitle") ||
-              "Mauris vitae ultricies leo integer malesuada tempor orci dapibus ultrices diam in arcu cursus euismod purus viverra accumsan."}
-          </p>
-          <div className="flex flex-wrap items-center gap-6 mb-10 text-sm font-medium text-gray-800 dark:text-gray-300 transition-colors duration-300">
-            <div className="flex items-center gap-2">
-              <svg
-                className="w-5 h-5 text-gray-700 dark:text-gray-400"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              <span>Top Brands</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <svg
-                className="w-5 h-5 text-gray-700 dark:text-gray-400"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              <span>High Quality</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <svg
-                className="w-5 h-5 text-gray-700 dark:text-gray-400"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              <span>Quick Delivery</span>
-            </div>
-          </div>
-          <div>
-          <button
-              onClick={() => navigate("/Shop")}  className="bg-[#F2B75A] hover:bg-[#d9a54a] rounded-sm text-gray-900 font-semibold py-3 px-8 tracking-wider uppercase text-sm transition-colors duration-300">
-              {t("home.viewAll")}
-            </button>
-          </div>
-        </div>
-        <div className="flex-1 relative flex items-center justify-center h-[500px] lg:h-auto">
-          <img
-            src="https://images.unsplash.com/photo-1576566588028-4147f3842f27?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80"
-            alt="Model wearing a thick white knit sweater"
-            className="w-full h-full object-cover object-top mix-blend-multiply dark:mix-blend-normal dark:opacity-90 transition-all duration-300"
-          />
-        </div>
-      </div>
-
-      {/* --- DARK FEATURES BAR --- */}
-      {/* In dark mode, this becomes a slightly lighter gray to distinguish from the deep black background */}
-      <div className="w-full bg-[#111111] dark:bg-gray-400 dark:text-black text-white py-16 px-8 md:px-16 lg:px-24 transition-colors duration-300 border-y border-transparent dark:border-gray-800">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-8 text-center">
-          <div className="flex flex-col items-center">
-            <svg
-              className="w-12 h-12 mb-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M16 15l2 2 4-4"
-              />
-            </svg>
-            <h3 className="text-xl font-bold font-serif mb-2">
-              {t("home.securePayment")}
-            </h3>
-            <p className="text-gray-400 text-sm">
-              {t("home.securePaymentSub")}
+    <div className="bg-porcelain dark:bg-ink">
+      {/* HERO */}
+      <section className="relative overflow-hidden">
+        <div className="aurora grain absolute inset-0" />
+        <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-4 py-16 md:px-8 lg:grid-cols-2 lg:py-24">
+          <div className="fh-fade-up">
+            <span className="inline-flex items-center gap-2 rounded-full border border-brand/30 bg-brand/5 px-4 py-1.5 font-mono text-xs uppercase tracking-[0.2em] text-brand">
+              <Sparkles size={13} /> {t('home.heroTag')}
+            </span>
+            <h1 className="mt-6 font-display text-5xl font-black leading-[0.95] tracking-tight text-gray-900 dark:text-white md:text-7xl">
+              {t('home.heroTitle1')}
+              <br />
+              <span className="text-gradient">{t('home.heroTitle2')}</span>
+            </h1>
+            <p className="mt-6 max-w-md text-base leading-relaxed text-gray-600 dark:text-gray-300">
+              {t('home.heroSubtitle')}
             </p>
+            <div className="mt-8 flex flex-wrap items-center gap-4">
+              <Link
+                to="/shop"
+                className="group inline-flex items-center gap-2 rounded-full bg-ink px-8 py-4 text-sm font-bold uppercase tracking-wider text-white shadow-lift transition-colors hover:bg-brand"
+              >
+                {t('home.shopCollection')}
+                <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+              </Link>
+              <Link
+                to="/about"
+                className="inline-flex items-center gap-2 rounded-full border border-gray-300 px-8 py-4 text-sm font-bold uppercase tracking-wider text-gray-800 transition-colors hover:border-brand hover:text-brand dark:border-gray-700 dark:text-gray-200"
+              >
+                {t('home.editorialCta')}
+              </Link>
+            </div>
           </div>
-          <div className="flex flex-col items-center">
-            <svg
-              className="w-12 h-12 mb-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-              />
-              <circle cx="12" cy="12" r="3" strokeWidth={1.5} />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M12 10.5v3m0-3a.75.75 0 100-1.5.75.75 0 000 1.5z"
-              />
-            </svg>
-            <h3 className="text-xl font-bold font-serif mb-2">
-              {t("home.return30")}
-            </h3>
-            <p className="text-gray-400 text-sm">{t("home.return30Sub")}</p>
-          </div>
-          <div className="flex flex-col items-center">
-            <svg
-              className="w-12 h-12 mb-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-              />
-            </svg>
-            <h3 className="text-xl font-bold font-serif mb-2">
-              {t("home.support247")}
-            </h3>
-            <p className="text-gray-400 text-sm">{t("home.support247Sub")}</p>
-          </div>
-          <div className="flex flex-col items-center">
-            <svg
-              className="w-12 h-12 mb-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M21 15.5a2.5 2.5 0 00-2.5-2.5h-11"
-              />
-            </svg>
-            <h3 className="text-xl font-bold font-serif mb-2">
-              {t("home.freeDelivery")}
-            </h3>
-            <p className="text-gray-400 text-sm">{t("home.freeDeliverySub")}</p>
+          <div className="fh-fade-up relative" style={{ animationDelay: '120ms' }}>
+            <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] shadow-lift">
+              <ProductImage src={HERO_IMAGE} alt="Fashion House editorial" className="h-full w-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-ink/40 via-transparent to-transparent" />
+            </div>
+            <div className="absolute -bottom-5 -left-5 hidden rounded-2xl border border-gray-200 bg-white/90 px-6 py-4 shadow-card backdrop-blur dark:border-gray-700 dark:bg-ink-800/90 sm:block">
+              <p className="font-display text-3xl font-black text-brand">{products.length || 14}+</p>
+              <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">{t('home.statProducts')}</p>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* --- NEW ARRIVALS SECTION --- */}
-      {/* Updated backgrounds and text colors */}
-      <div className="w-full bg-white dark:bg-gray-950 py-20 px-8 md:px-16 lg:px-24 transition-colors duration-300 ">
-        <div className="max-w-7xl mx-auto">
-          {/* Section Header */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12">
-            <div>
-              <p className="text-gray-400 dark:text-gray-500 text-sm mb-5 uppercase tracking-wide transition-colors duration-300">
-                {t("home.checkLatest")}
-              </p>
-              <h2 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 dark:text-white transition-colors duration-300">
-                {t("home.newArrivals")}
-              </h2>
-            </div>
-            <button
-              onClick={() => navigate("/Shop")} // Change to your actual route
-              className="mt-6 md:mt-0 border border-gray-900 dark:border-gray-300 text-gray-900 dark:text-gray-300 px-8 py-3 text-sm font-semibold uppercase tracking-wider hover:bg-gray-900 hover:text-white dark:hover:bg-gray-300 dark:hover:text-black transition-colors duration-300"
-            >
-              {t("home.viewAll")}
-            </button>
+      {/* MARQUEE */}
+      <div className="border-y border-gray-200 bg-ink py-4 text-white dark:border-gray-800">
+        <div className="flex overflow-hidden">
+          <div className="flex shrink-0 animate-marquee items-center gap-12 pr-12">
+            {[...marqueeItems, ...marqueeItems].map((item, i) => (
+              <span key={i} className="flex items-center gap-3 whitespace-nowrap font-mono text-xs uppercase tracking-[0.2em] text-white/80">
+                <Sparkles size={13} className="text-gold" /> {item}
+              </span>
+            ))}
           </div>
-
-          {/* Product Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {products.map((product) => (
-              <div key={product.id} className="group flex flex-col">
-                {/* Image Container - Dark mode image background changed to dark gray */}
-                <div className="relative bg-[#f7f7f7] dark:bg-gray-400 aspect-square flex items-center justify-center p-8 mb-6 overflow-hidden transition-colors duration-300">
-                  {product.isSale ? (
-                    <span className="absolute top-4 left-4 bg-[#25cf52] rounded-sm text-white text-xs font-bold px-2 py-1 uppercase z-10">
-                      {t("home.sale")}
-                    </span>
-                  ) : (
-                    <span className="absolute top-4 left-4 bg-[#d64541] rounded-sm text-white text-xs font-bold px-2 py-1 uppercase z-10">
-                      Out of Stock
-                    </span>
-                  )}
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    className="w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal group-hover:scale-105 transition-transform duration-500"
-                  />
-                </div>
-
-                {/* Product Info */}
-                <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1 transition-colors duration-300">
-                  {product.name}
-                </h3>
-
-                {/* Price */}
-                <div className="flex items-center gap-2 mb-2 text-sm">
-                  <span className="text-gray-600 dark:text-gray-400 font-medium transition-colors duration-300">
-                    {product.price}
-                  </span>
-                </div>
-
-                {/* Category */}
-                <p className="text-gray-400 dark:text-gray-500 text-xs uppercase tracking-wider mb-4 transition-colors duration-300">
-                  {product.category}
-                </p>
-
-                {/* Add to Cart Button */}
-                <button className="mt-auto bg-[#F2B75A] rounded-md hover:bg-[#d9a54a] text-gray-900 font-semibold py-3 px-6 text-sm w-max transition-colors duration-300">
-                  {t("home.addToCart")}
-                </button>
-              </div>
+          <div className="flex shrink-0 animate-marquee items-center gap-12 pr-12" aria-hidden="true">
+            {[...marqueeItems, ...marqueeItems].map((item, i) => (
+              <span key={i} className="flex items-center gap-3 whitespace-nowrap font-mono text-xs uppercase tracking-[0.2em] text-white/80">
+                <Sparkles size={13} className="text-gold" /> {item}
+              </span>
             ))}
           </div>
         </div>
       </div>
-    </div>
-  );
-};
 
-export default Home;
+      {/* FEATURED */}
+      <section className="mx-auto max-w-7xl px-4 py-20 md:px-8">
+        <div className="mb-12 flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
+          <div>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-brand">{t('home.checkLatest')}</p>
+            <h2 className="mt-3 font-display text-4xl font-black tracking-tight text-gray-900 dark:text-white md:text-5xl">
+              {t('home.featured')}
+            </h2>
+            <p className="mt-3 max-w-md text-gray-500 dark:text-gray-400">{t('home.featuredSubtitle')}</p>
+          </div>
+          <Link
+            to="/shop?featured=true"
+            className="group inline-flex items-center gap-2 border-b-2 border-brand pb-1 text-sm font-bold uppercase tracking-wider text-gray-900 dark:text-white"
+          >
+            {t('home.viewAll')}
+            <ArrowUpRight size={16} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+          </Link>
+        </div>
+        {loading ? (
+          <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i}>
+                <div className="fh-skeleton aspect-[4/5] rounded-xl" />
+                <div className="fh-skeleton mt-4 h-4 w-1/3 rounded" />
+                <div className="fh-skeleton mt-2 h-5 w-2/3 rounded" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
+            {featured.slice(0, 8).map((p, i) => (
+              <ProductCard key={p._id} product={p} index={i} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* CATEGORIES */}
+      <section className="border-y border-gray-200 bg-white py-20 dark:border-gray-800 dark:bg-ink-900">
+        <div className="mx-auto max-w-7xl px-4 md:px-8">
+          <div className="mb-12 text-center">
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-brand">{t('home.categoriesSubtitle')}</p>
+            <h2 className="mt-3 font-display text-4xl font-black tracking-tight text-gray-900 dark:text-white md:text-5xl">
+              {t('home.categoriesTitle')}
+            </h2>
+          </div>
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+            {categoryTiles.map((c, i) => (
+              <Link
+                key={c._id}
+                to={`/shop?category=${c._id}`}
+                className="group fh-fade-up relative aspect-[3/4] overflow-hidden rounded-2xl bg-porcelain-200 dark:bg-ink-800"
+                style={{ animationDelay: `${i * 60}ms` }}
+              >
+                {c.image && (
+                  <ProductImage src={c.image} alt={c.categoryName} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-ink/80 via-ink/20 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 p-4">
+                  <p className="font-display text-lg font-bold text-white">{c.categoryName}</p>
+                  <span className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-gold opacity-0 transition-opacity group-hover:opacity-100">
+                    {t('home.shopNow')} <ArrowRight size={12} />
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* EDITORIAL */}
+      <section className="mx-auto max-w-7xl px-4 py-20 md:px-8">
+        <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
+          <div className="relative aspect-[5/4] overflow-hidden rounded-[2rem] shadow-lift">
+            <ProductImage src={EDITORIAL_IMAGE} alt="The atelier" className="h-full w-full object-cover" />
+          </div>
+          <div>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-brand">{t('home.editorialTag')}</p>
+            <h2 className="mt-3 font-display text-4xl font-black leading-tight tracking-tight text-gray-900 dark:text-white md:text-5xl">
+              {t('home.editorialTitle')}
+            </h2>
+            <p className="mt-5 max-w-prose leading-relaxed text-gray-600 dark:text-gray-300">
+              {t('home.editorialText')}
+            </p>
+            <div className="mt-8 grid grid-cols-2 gap-6">
+              {stats.map((s) => (
+                <div key={s.label} className="border-l-2 border-brand pl-4">
+                  <p className="font-display text-3xl font-black text-gray-900 dark:text-white">{s.value}</p>
+                  <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">{s.label}</p>
+                </div>
+              ))}
+            </div>
+            <Link
+              to="/about"
+              className="mt-8 inline-flex items-center gap-2 rounded-full bg-ink px-8 py-3.5 text-sm font-bold uppercase tracking-wider text-white transition-colors hover:bg-brand"
+            >
+              {t('home.editorialCta')} <ArrowRight size={16} />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* VALUE PROPS */}
+      <section className="bg-ink py-16 text-white">
+        <div className="mx-auto grid max-w-7xl grid-cols-1 gap-10 px-4 sm:grid-cols-2 md:px-8 lg:grid-cols-4">
+          {valueProps.map(({ icon: Icon, title, sub }) => (
+            <div key={title} className="flex flex-col items-center text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/5 text-gold">
+                <Icon size={26} strokeWidth={1.6} />
+              </div>
+              <h3 className="mt-4 font-display text-lg font-bold">{title}</h3>
+              <p className="mt-1 text-sm text-white/60">{sub}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* NEWSLETTER */}
+      <section className="relative overflow-hidden">
+        <div className="aurora grain absolute inset-0" />
+        <div className="relative mx-auto max-w-3xl px-4 py-20 text-center md:px-8">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand text-white">
+            <Mail size={24} strokeWidth={1.8} />
+          </div>
+          <h2 className="mt-6 font-display text-4xl font-black tracking-tight text-gray-900 dark:text-white md:text-5xl">
+            {t('newsletter.title')}
+          </h2>
+          <p className="mt-3 text-gray-600 dark:text-gray-300">{t('newsletter.subtitle')}</p>
+          {subscribed ? (
+            <div className="mx-auto mt-8 inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-6 py-3 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+              <Check size={18} strokeWidth={2.5} /> {t('newsletter.success')}
+            </div>
+          ) : (
+            <form onSubmit={subscribe} className="mx-auto mt-8 flex max-w-md flex-col gap-3 sm:flex-row">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={t('newsletter.placeholder')}
+                className="flex-1 rounded-full border border-gray-300 bg-white px-6 py-3.5 text-sm text-gray-900 outline-none transition-colors focus:border-brand dark:border-gray-700 dark:bg-ink-800 dark:text-white"
+              />
+              <button
+                type="submit"
+                disabled={subscribing}
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-brand px-8 py-3.5 text-sm font-bold uppercase tracking-wider text-white transition-colors hover:bg-brand-600 disabled:bg-gray-400"
+              >
+                {subscribing ? <Loader2 size={16} className="animate-spin" /> : null}
+                {t('newsletter.button')}
+              </button>
+            </form>
+          )}
+        </div>
+      </section>
+    </div>
+  )
+}
+
+export default Home

@@ -82,12 +82,7 @@ shipmentSchema.index({ trackingNumber: 1 }, { unique: true })
 
 // Method to add tracking history
 shipmentSchema.methods.addTracking = function (status, location, description) {
-  const entry = new TrackingEntry({
-    status,
-    location,
-    description,
-  })
-  this.trackingHistory.push(entry)
+  this.trackingHistory.push({ status, location, description })
   return this.save()
 }
 
@@ -119,9 +114,6 @@ shipmentSchema.statics.findByOrder = function (orderId) {
 shipmentSchema.statics.findByTrackingNumber = function (trackingNumber) {
   return this.findOne({ trackingNumber })
 }
-
-// Track entry sub-schema as nested model
-const TrackingEntry = shipmentSchema.trackingHistory.constructor
 
 // Helper to get tracking history sorted by timestamp
 shipmentSchema.methods.getSortedTracking = function () {

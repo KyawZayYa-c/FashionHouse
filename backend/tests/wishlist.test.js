@@ -1,112 +1,126 @@
-const request = require('supertest');
-const mongoose = require('mongoose');
-const app = require('../src/app').default;
-
-const originalLog = console.log;
-beforeAll(() => { console.log = () => {}; });
-afterAll(() => { console.log = originalLog; });
+const { app, request, createUser, createCategory, createProduct } = require('./helpers');
 
 describe('Wishlist Endpoints', () => {
-  let server;
-  beforeAll(async () => {
-    const mongoose = require('mongoose');
-    const uri = 'mongodb://127.0.0.1:27017/fashion_test';
-    await mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true });
-    server = app.listen(0);
-  });
-
-  afterAll(async () => {
-    await mongoose.connection.dropDatabase();
-    await mongoose.connection.close();
-    await server.close();
-  });
+  let customerToken;
+  let otherToken;
+  let product;
 
   beforeEach(async () => {
-    const User = mongoose.model('User');
-    await User.deleteMany({});
-    const Product = mongoose.model('Product');
-    await Product.deleteMany({});
+    const admin = await createUser({
+      username: 'wishadmin',
+      email: 'wishadmin@example.com',
+      role: 'admin',
+    });
+    const customer = await createUser({
+      username: 'wishcustomer',
+      email: 'wishcustomer@example.com',
+    });
+    const other = await createUser({
+      username: 'wishother',
+      email: 'wishother@example.com',
+    });
+    customerToken = customer.token;
+    otherToken = other.token;
+
+    const category = await createCategory(admin.token, { slug: 'wish-category' });
+    product = await createProduct(admin.token, {
+      categoryId: category._id,
+      slug: 'wish-product',
+    });
   });
 
   describe('GET /api/wishlist', () => {
-    test('should get wishlist for authenticated user', async () => {
-      await request(app).post('/api/auth/register').send({
-        username: 'wishuser', email: 'wish@example.com', password: 'password123'
-      });
-      const loginRes = await request(app)
-        .post('/api/auth/login')
-        .send({ email: 'wish@example.com', password: 'password123' });
-
-      const token = loginRes.body.data.token;
-
+    test('returns an empty wishlist for a new user', async () => {
       const res = await request(app)
         .get('/api/wishlist')
-        .set('Authorization', `Bearer ${token}`);
+        .set('Authorization', `Bearer ${customerToken}`);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.success).toBe(true);
+      expect(res.body.data.wishlist).toEqual([]);
     });
 
-    test('should fail without authentication', async () => {
+    test('requires authentication', async () => {
       const res = await request(app).get('/api/wishlist');
       expect(res.statusCode).toBe(401);
     });
   });
 
   describe('POST /api/wishlist/:productId', () => {
-    test('should add product to wishlist', async () => {
-      await request(app).post('/api/auth/register').send({
-        username: 'wishadduser', email: 'wishadd@example.com', password: 'password123'
-      });
-      const loginRes = await request(app)
-        .post('/api/auth/login')
-        .send({ email: 'wishadd@example.com', password: 'password123' });
-
-      const token = loginRes.body.data.token;
-
-      // Create product first
-      await request(app).post('/api/categories').send({
-        categoryName: 'Test', slug: 'test', description: 'Test'
-      });
-      await request(app).post('/api/products').send({
-        categoryId: 'cat0',
-        productName: 'Test Product',
-        slug: 'test-product',
-        description: 'Test product',
-        price: 19.99
-      });
-
+    test('adds a product with populated product data', async () => {
       const res = await request(app)
-        .post('/api/wishlist/test-product')
-        .set('Authorization', `Bearer ${token}`);
+        .post(`/api/wishlist/${product._id}`)
+        .set('Authorization', `Bearer ${customerToken}`);
 
       expect(res.statusCode).toBe(201);
-      expect(res.body.success).toBe(true);
+      expect(res.body.data.wishlist).toHaveLength(1);
+      expect(res.body.data.wishlist[0].productId._id).toBe(product._id);
+      expect(res.body.data.wishlist[0].productId.productName).toBe(product.productName);
     });
 
-    test('should prevent duplicate wishlist items', async () => {
-      // Similar setup - adding same product twice should fail
-      const res = await request(app)
-        .post('/api/wishlist/test-product')
-        .set('Authorization', 'Bearer testtoken');
+    test('is idempotent — re-adding does not duplicate', async () => {
+      await request(app)
+        .post(`/api/wishlist/${product._id}`)
+        .set('Authorization', `Bearer ${customerToken}`);
 
-      // Status depends on compound unique index
+      const res = await request(app)
+        .post(`/api/wishlist/${product._id}`)
+        .set('Authorization', `Bearer ${customerToken}`);
+
+      expect(res.statusCode).toBe(201);
+      expect(res.body.data.wishlist).toHaveLength(1);
+    });
+
+    test('returns 404 for an unknown product', async () => {
+      const res = await request(app)
+        .post('/api/wishlist/aaaaaaaaaaaaaaaaaaaaaaaa')
+        .set('Authorization', `Bearer ${customerToken}`);
+
+      expect(res.statusCode).toBe(404);
     });
   });
 
   describe('DELETE /api/wishlist/:productId', () => {
-    test('should remove product from wishlist', async () => {
+    test('removes a product from the wishlist', async () => {
+      await request(app)
+        .post(`/api/wishlist/${product._id}`)
+        .set('Authorization', `Bearer ${customerToken}`);
+
       const res = await request(app)
-        .delete('/api/wishlist/test-product')
-        .set('Authorization', 'Bearer testtoken');
+        .delete(`/api/wishlist/${product._id}`)
+        .set('Authorization', `Bearer ${customerToken}`);
 
       expect(res.statusCode).toBe(200);
+      expect(res.body.data.wishlist).toEqual([]);
     });
+  });
 
-    test('should clear wishlist', async () => {
-      const res = await request(app).delete('/api/wishlist/clear').set('Authorization', 'Bearer testtoken');
+  describe('DELETE /api/wishlist/clear', () => {
+    test('clears the whole wishlist', async () => {
+      await request(app)
+        .post(`/api/wishlist/${product._id}`)
+        .set('Authorization', `Bearer ${customerToken}`);
+
+      const res = await request(app)
+        .delete('/api/wishlist/clear')
+        .set('Authorization', `Bearer ${customerToken}`);
 
       expect(res.statusCode).toBe(200);
+      expect(res.body.data.wishlist).toEqual([]);
+    });
+  });
+
+  describe('Wishlist isolation', () => {
+    test('one user never sees another user’s wishlist', async () => {
+      await request(app)
+        .post(`/api/wishlist/${product._id}`)
+        .set('Authorization', `Bearer ${customerToken}`);
+
+      const res = await request(app)
+        .get('/api/wishlist')
+        .set('Authorization', `Bearer ${otherToken}`);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.data.wishlist).toEqual([]);
     });
   });
 });

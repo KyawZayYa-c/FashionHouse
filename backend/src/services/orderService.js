@@ -1,10 +1,11 @@
+const mongoose = require('mongoose');
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 const Cart = require('../models/Cart');
 const AppError = require('../utils/errors').AppError;
 const ValidationError = require('../utils/errors').ValidationError;
 const NotFoundError = require('../utils/errors').NotFoundError;
-const catchAsync = require('../utils/catchAsync');
+const catchAsync = (fn) => fn;
 
 /**
  * Create order from customer cart
@@ -12,29 +13,46 @@ const catchAsync = require('../utils/catchAsync');
  * @param {Object} options - Additional options
  * @returns {Promise<Object>} The created order
  */
+// Decimal128 / string / number -> finite JS number.
+const toNum = (v) => {
+  if (v === null || v === undefined) return 0;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+  const n = Number(typeof v.toString === 'function' ? v.toString() : v);
+  return Number.isFinite(n) ? n : 0;
+};
+
 const createOrderFromCart = catchAsync(async (customerId, options = {}) => {
-  const { deliveryFee = 0, discount = 0 } = options;
+  const { deliveryFee = 0, discount = 0, shippingAddress, notes, paymentMethod } = options;
 
   // 1. Find and validate the customer's cart
-  const cart = await Cart.findOne({ userId: customerId }).populate('items.productId');
-  if (!cart) {
-    throw new NotFoundError('Cart');
+  const cart = await Cart.findOne({ userId: customerId });
+  if (!cart || !cart.items || cart.items.length === 0) {
+    throw new ValidationError('Your cart is empty');
   }
 
-  // 2. Validate each cart item: check product existence, stock, and pricing
+  // 2. Validate the shipping address supplied by the checkout form. (The cart
+  //    model has no addresses; the address comes from the request body.)
+  const requiredAddressFields = ['recipientName', 'phone', 'address', 'township', 'city'];
+  if (
+    !shippingAddress ||
+    requiredAddressFields.some((f) => !String(shippingAddress[f] || '').trim())
+  ) {
+    throw new ValidationError('A complete shipping address is required');
+  }
+
+  // 3. Validate each cart item: product existence, stock, and current pricing
   const orderItems = [];
   let subtotal = 0;
+  const stockUpdates = [];
 
   for (const item of cart.items) {
-    const { productId, variantId, quantity, price } = item;
+    const { productId, variantId, quantity } = item;
 
-    // Validate product exists
     const product = await Product.findById(productId);
     if (!product) {
       throw new NotFoundError(`Product with ID ${productId}`);
     }
 
-    // Validate variant exists within product
     const variant = product.variants.find(
       (v) => v._id.toString() === variantId.toString()
     );
@@ -42,15 +60,14 @@ const createOrderFromCart = catchAsync(async (customerId, options = {}) => {
       throw new ValidationError(`Variant not found for product ${product.productName}`);
     }
 
-    // Validate stock availability
     if (variant.stock < quantity) {
       throw new ValidationError(
         `Insufficient stock for ${product.productName}. Available: ${variant.stock}`
       );
     }
 
-    // Use current product price (never trust client-submitted price)
-    const currentPrice = variant.price || product.price || 0;
+    // Never trust a client-submitted price; recompute from the catalog.
+    const currentPrice = toNum(product.price) + toNum(variant.additionalPrice);
     const itemSubtotal = currentPrice * quantity;
 
     orderItems.push({
@@ -66,69 +83,46 @@ const createOrderFromCart = catchAsync(async (customerId, options = {}) => {
     });
 
     subtotal += itemSubtotal;
+    stockUpdates.push({ product, variant, quantity });
   }
 
-  // 3. Validate shipping address
-  const shippingAddress = cart.addresses.find((addr) => addr.isDefault);
-  if (!shippingAddress) {
-    // Try using the first address if no default is marked
-    const firstAddress = cart.addresses[0];
-    if (!firstAddress) {
-      throw new ValidationError('No shipping address found in cart');
-    }
-  }
+  // 4. Generate a unique order number
+  const orderNumber = `ORD-${new Date().getFullYear()}-${Date.now()
+    .toString(36)
+    .toUpperCase()}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
 
-  // 4. Generate unique order number
-  const prefix = 'ORD';
-  const randomSuffix = Math.random().toString(36).substr(2, 8).toUpperCase();
-  const dateSuffix = new Date().getFullYear().toString();
-  let orderNumber;
-  let attempts = 0;
-  do {
-    orderNumber = `${prefix}-${dateSuffix}-${randomSuffix}-${Math.floor(
-      Math.random() * 10000
-    )
-      .toString()
-      .padStart(4, '0')}`;
-    attempts++;
-    if (attempts > 10) {
-      // Fallback to UUID-based order number
-      orderNumber = `${prefix}-${Date.now()}-${Math.random()
-        .toString(36)
-        .substr(2, 12).toUpperCase}`;
-      break;
-    }
-  } while (await Order.findOne({ orderNumber }));
-  // }
+  const fee = toNum(deliveryFee);
+  const disc = toNum(discount);
+  const totalAmount = Math.max(0, subtotal + fee - disc);
 
-  // 5. Create the order with snapshots
+  // 5. Create the order with item/address snapshots and numeric totals
   const order = await Order.create({
     userId: customerId,
     orderNumber,
     items: orderItems,
     shippingAddress: {
-      recipientName: shippingAddress.recipientName,
-      phone: shippingAddress.phone,
-      address: shippingAddress.address,
-      township: shippingAddress.township,
-      city: shippingAddress.city,
+      recipientName: String(shippingAddress.recipientName).trim(),
+      phone: String(shippingAddress.phone).trim(),
+      address: String(shippingAddress.address).trim(),
+      township: String(shippingAddress.township).trim(),
+      city: String(shippingAddress.city).trim(),
     },
     subtotal,
-    deliveryFee: Number(deliveryFee) || 0,
-    discount: Number(discount) || 0,
-    totalAmount: (Number(subtotal) || 0) + (Number(deliveryFee) || 0) - (Number(discount) || 0),
+    deliveryFee: fee,
+    discount: disc,
+    totalAmount,
     orderStatus: 'pending',
-    paymentStatus: 'unpaid',
+    paymentStatus: paymentMethod === 'paid' ? 'paid' : 'unpaid',
+    notes: notes ? String(notes).trim() : undefined,
   });
 
-  // 6. Calculate totals using the model method
-  await order.calculateTotals();
+  // 6. Decrement stock for each purchased variant
+  for (const { product, variant, quantity } of stockUpdates) {
+    variant.stock = Math.max(0, variant.stock - quantity);
+    await product.save({ validateBeforeSave: false });
+  }
 
-  // 7. Update product stock using MongoDB transaction
-  // We'll do this after order creation to ensure order is saved first
-  // In a full implementation, this would use session transactions
-
-  // 8. Clear the cart only after successful order creation
+  // 7. Clear the cart only after a successful order
   await Cart.findByIdAndDelete(cart._id);
 
   return order;
@@ -142,10 +136,11 @@ const createOrderFromCart = catchAsync(async (customerId, options = {}) => {
  */
 const getCustomerOrders = catchAsync(async (userId, query = {}) => {
   const { page = 1, limit = 10, status } = query;
-  const skip = (page - 1) * limit;
+  const skip = (Number(page) - 1) * Number(limit);
 
-  // Build filter object
-  const filter = { userId };
+  // Build filter object. Aggregation does NOT auto-cast strings to ObjectId the
+  // way find() does, so cast explicitly or the $match returns nothing.
+  const filter = { userId: new mongoose.Types.ObjectId(String(userId)) };
   if (status && status !== 'all') {
     filter.orderStatus = status;
   }
@@ -154,7 +149,7 @@ const getCustomerOrders = catchAsync(async (userId, query = {}) => {
   const orders = await Order.aggregate([
     { $match: filter },
     { $sort: { createdAt: -1 } },
-    { $skip: skip * 1 },
+    { $skip: skip },
     { $limit: Number(limit) },
     {
       $project: {
@@ -307,6 +302,42 @@ const getOrderDetails = catchAsync(async (orderId) => {
   return order;
 });
 
+const getAllOrdersWithFilters = catchAsync(async (filter = {}, pagination = {}) => {
+  const { page = 1, limit = 10 } = pagination;
+  const skip = (page - 1) * limit;
+
+  const orders = await Order.find(filter)
+    .populate('userId', 'username email')
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(Number(limit));
+
+  const total = await Order.countDocuments(filter);
+
+  return {
+    orders,
+    totalPages: Math.ceil(total / limit),
+    currentPage: Number(page),
+    total,
+  };
+});
+
+const updateOrderStatus = catchAsync(async (orderId, status) => {
+  const order = await Order.findById(orderId);
+  if (!order) {
+    throw new NotFoundError('Order');
+  }
+  const validStatuses = [
+    'pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'returned',
+  ];
+  if (!validStatuses.includes(status)) {
+    throw new ValidationError('Invalid order status');
+  }
+  order.orderStatus = status;
+  await order.save();
+  return order;
+});
+
 module.exports = {
   createOrderFromCart,
   getCustomerOrders,
@@ -315,4 +346,6 @@ module.exports = {
   validateOrderOwnership,
   cancelOrder,
   getOrderDetails,
+  getAllOrdersWithFilters,
+  updateOrderStatus,
 };

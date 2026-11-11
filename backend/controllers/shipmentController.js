@@ -1,8 +1,9 @@
-const catchAsync = require('../../utils/catchAsync');
-const responseHandler = require('../../utils/responseHandler');
-const shipmentService = require('../services/shipmentService');
-const AppError = require('../../utils/errors').AppError;
-const NotFoundError = require('../../utils/errors').NotFoundError;
+const catchAsync = require('../src/utils/catchAsync');
+const responseHandler = require('../src/utils/responseHandler');
+const shipmentService = require('../src/services/shipmentService');
+const orderService = require('../src/services/orderService');
+const AppError = require('../src/utils/errors').AppError;
+const NotFoundError = require('../src/utils/errors').NotFoundError;
 
 const createShipment = catchAsync(async (req, res) => {
   if (!req.user) {
@@ -17,8 +18,8 @@ const createShipment = catchAsync(async (req, res) => {
     return;
   }
 
-  // Validate order ownership
-  await orderService.validateOrderOwnership(orderId, req.user.id);
+  // Admin-only route: no customer ownership check here (an admin ships any
+  // order). The service validates that the order exists and is shippable.
 
   // Create shipment using service
   const shipment = await shipmentService.createShipment(orderId, {
@@ -81,7 +82,8 @@ const updateShipment = catchAsync(async (req, res) => {
     return;
   }
 
-  const { shipmentId } = req.params;
+  // Route declares ':id'; fall back from ':shipmentId' for safety.
+  const shipmentId = req.params.shipmentId || req.params.id;
   const { status, location, description } = req.body;
 
   if (!shipmentId) {
@@ -104,7 +106,8 @@ const addTrackingHistory = catchAsync(async (req, res) => {
     return;
   }
 
-  const { shipmentId } = req.params;
+  // Route declares ':id'; fall back from ':shipmentId' for safety.
+  const shipmentId = req.params.shipmentId || req.params.id;
   const { status, location, description } = req.body;
 
   if (!shipmentId) {

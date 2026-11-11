@@ -1,4 +1,4 @@
-const { ValidationError } = require('../utils/errors');
+const { ValidationError } = require('../errors');
 
 const isValidObjectId = (id) => {
   return /^[0-9a-fA-F]{24}$/.test(id);

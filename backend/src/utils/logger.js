@@ -1,23 +1,20 @@
-const pino = require('pino');
-const config = require('../../config');
+const config = require('../config');
 
-const isDevelopment = config.env === 'development';
+// Lightweight structured logger (no extra runtime dependency).
+const emit = (level, args) => {
+  const line = `[${new Date().toISOString()}] [${level}]`;
+  if (level === 'ERROR') console.error(line, ...args);
+  else if (level === 'WARN') console.warn(line, ...args);
+  else console.log(line, ...args);
+};
 
-const logger = pino({
-  level: config.env === 'production' ? 'info' : 'debug',
-  transport: isDevelopment
-    ? {
-        target: 'pino-pretty',
-        options: {
-          colorize: true,
-          translateTime: 'SYS:standard',
-          ignore: 'pid,hostname',
-        },
-      }
-    : undefined,
-  base: {
-    service: 'saas-starter-kit-backend',
+const logger = {
+  debug: (...args) => {
+    if (config.env !== 'production') emit('DEBUG', args);
   },
-});
+  info: (...args) => emit('INFO', args),
+  warn: (...args) => emit('WARN', args),
+  error: (...args) => emit('ERROR', args),
+};
 
 module.exports = logger;
