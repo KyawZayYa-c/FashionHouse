@@ -12,7 +12,7 @@ import ProductCard from '../components/ProductCard'
 import ProductImage from '../components/ProductImage'
 
 const HERO_IMAGE =
-  'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80'
+  'https://images.unsplash.com/photo-1576871337622-98d48d1cf531?w=800'
 const EDITORIAL_IMAGE =
   'https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80'
 

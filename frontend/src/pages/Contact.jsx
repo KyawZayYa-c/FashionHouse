@@ -86,7 +86,7 @@ const Contact = () => {
             </p>
             <div className="relative rounded-lg overflow-hidden bg-[#e8363c] aspect-[4/5] max-w-sm">
               <img
-                src="/images/contact-us.jpg"
+                src="https://images.unsplash.com/photo-1576871337622-98d48d1cf531?w=800"
                 alt={t('contact.imageAlt', 'Contact Fashion House')}
                 className="w-full h-full object-cover"
                 loading="lazy"
